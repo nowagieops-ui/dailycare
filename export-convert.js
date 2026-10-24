@@ -38,7 +38,7 @@ function convert(raw) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} — Daily Care Support</title>
-<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="shared.css?v=3">
 ${helmetInner}
 </head>
 <body>

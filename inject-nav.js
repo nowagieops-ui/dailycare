@@ -9,7 +9,7 @@ for (const f of files) {
   const p = path.join(DIR, f);
   let html = fs.readFileSync(p, 'utf8');
   if (html.includes('nav.js')) continue;
-  html = html.replace('</body>', '<script src="nav.js"></script>\n</body>');
+  html = html.replace('</body>', '<script src="nav.js?v=3"></script>\n</body>');
   fs.writeFileSync(p, html, 'utf8');
   count++;
 }
