@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Portal — Settings — Daily Care Support</title>
+<link rel="stylesheet" href="shared.css?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px;}
+.settings-row:last-child{border-bottom:none;}
+.toggle{width:40px;height:24px;border-radius:999px;background:var(--line);position:relative;flex-shrink:0;}
+.toggle.on{background:var(--teal-700);}
+.toggle-dot{width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:19px;}
+.toggle:not(.on) .toggle-dot{left:3px;}
+</style>
+</head>
+<body>
+<div class="phone-screen" style="width:390px;height:844px">
+  <div class="phone-header">
+    <div class="row gap-12 center">
+      <a href="Family-Home.html" aria-label="Back to home" class="btn-ghost" style="padding:6px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </a>
+      <h2 style="font-size:18px">Settings</h2>
+    </div>
+  </div>
+  <div class="phone-body">
+    <div class="card row gap-12 center">
+      <div class="avatar" style="width:52px;height:52px;font-size:17px;background:var(--coral-100);color:var(--coral)">MT</div>
+      <div class="stack" style="flex:1">
+        <span style="font-size:15px;font-weight:700">Thompson Family</span>
+        <span class="faint" style="font-size:12px">Guardian of Maria S.</span>
+      </div>
+      <button type="button" style="font-size:13px;font-weight:600;background:none;border:none;color:var(--teal-700);cursor:pointer;padding:0">Edit</button>
+    </div>
+
+    <div class="stack gap-6">
+      <span class="eyebrow">Account</span>
+      <div class="card-flat stack" style="padding:4px 16px">
+        <button type="button" class="settings-row" style="color:var(--ink);background:none;border:none;width:100%;text-align:left;font:inherit;cursor:pointer"><span>Change password</span><span class="faint">›</span></button>
+        <div class="settings-row"><span>Visit reminders</span><div class="toggle on"><div class="toggle-dot"></div></div></div>
+        <div class="settings-row"><span>New message alerts</span><div class="toggle on"><div class="toggle-dot"></div></div></div>
+        <div class="settings-row"><span>Care plan updates</span><div class="toggle on"><div class="toggle-dot"></div></div></div>
+      </div>
+    </div>
+
+    <div class="stack gap-6">
+      <span class="eyebrow">Support</span>
+      <div class="card-flat stack" style="padding:4px 16px">
+        <a href="Family-Messages.html" class="settings-row" style="color:var(--ink);text-decoration:none"><span>Contact the office</span><span class="faint">›</span></a>
+        <button type="button" class="settings-row" style="color:var(--ink);background:none;border:none;width:100%;text-align:left;font:inherit;cursor:pointer"><span>Privacy policy</span><span class="faint">›</span></button>
+        <button type="button" class="settings-row" style="color:var(--ink);background:none;border:none;width:100%;text-align:left;font:inherit;cursor:pointer"><span>Terms of service</span><span class="faint">›</span></button>
+      </div>
+    </div>
+
+    <a href="Family-Login.html" class="btn btn-secondary btn-block" style="color:var(--red);border-color:var(--red-100)">Log out</a>
+  </div>
+</div>
+<script src="nav.js?v=2"></script>
+</body>
+</html>

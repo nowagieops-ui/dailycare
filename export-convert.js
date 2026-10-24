@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC_DIR = 'C:/PROGRA~1/KMSpico/temp/claude/c--Users-HP-250-G8-dailycare/bafa7c9f-2358-4722-a3af-5f21078f3133/scratchpad/artifact-files/b5d78009-60ed-47bf-a00d-20f5b3ee2f56/project';
-const OUT_DIR = path.join(__dirname, 'export');
+const OUT_DIR = __dirname;
 
 // Files handled by hand (interactive) — skip in the generic pass.
 const SKIP = new Set(['DSP-ClockIn.dc.html', 'DSP-Tasks.dc.html', 'Admin-Reports.dc.html']);
@@ -36,6 +36,7 @@ function convert(raw) {
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} — Daily Care Support</title>
 <link rel="stylesheet" href="shared.css">
 ${helmetInner}

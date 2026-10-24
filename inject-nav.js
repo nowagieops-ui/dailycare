@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DIR = path.join(__dirname, 'export');
+const DIR = __dirname;
 const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.html'));
 
 let count = 0;

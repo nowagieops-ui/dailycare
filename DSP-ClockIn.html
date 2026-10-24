@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSP App — Clock In/Out — Daily Care Support</title>
+<link rel="stylesheet" href="shared.css?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0}
+.clock-dial{width:180px;height:180px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;color:#fff;font-weight:700;background:var(--teal-700);}
+.clock-dial.on{background:#C1554B;}
+</style>
+</head>
+<body>
+<div class="phone-screen" style="width:390px;height:844px">
+  <div class="phone-header">
+    <h2 style="font-size:18px">Clock In / Out</h2>
+    <div class="avatar">JM</div>
+  </div>
+  <div class="phone-body" style="align-items:center;text-align:center;padding-top:12px">
+    <span class="muted" style="font-size:14px">Saturday, October 24</span>
+    <span style="font-size:40px;font-weight:800;color:var(--teal-900)">9:02 AM</span>
+
+    <div class="card-flat stack gap-6" style="width:100%;text-align:left">
+      <h3 style="font-size:15px">Maria S. — Supported Living</h3>
+      <div class="row gap-8 center" style="font-size:13px;color:var(--green)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>
+        <span style="font-weight:600">Within range · 214 Willow Ct, Unit B</span>
+      </div>
+    </div>
+
+    <button type="button" id="clockBtn" class="clock-dial">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <span id="clockLabel" style="font-size:18px">Clock In</span>
+    </button>
+
+    <p class="muted" id="clockStatus" style="font-size:13px">Tap to start your visit with Maria.</p>
+    <div id="clockedInTag" class="tag tag-success" style="font-size:13px;display:none">Clocked in at 9:02 AM</div>
+
+    <a href="DSP-MissedClockIn.html" style="font-size:13px;font-weight:600;margin-top:8px">Report a missed clock-in instead</a>
+  </div>
+  <div class="tabbar">
+    <a href="DSP-Home.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1V16a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3.5a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="DSP-Schedule.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16M8 3v4M16 3v4M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg>
+      <span>Schedule</span>
+    </a>
+    <a href="DSP-ClockIn.html" class="tab-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <span>Clock</span>
+    </a>
+    <a href="DSP-Tasks.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12.5 11 14.5 16 9.5"/><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+      <span>Tasks</span>
+    </a>
+    <a href="DSP-Documents.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>
+      <span>Docs</span>
+    </a>
+  </div>
+</div>
+<script>
+(function () {
+  var clockedIn = false;
+  var btn = document.getElementById('clockBtn');
+  var label = document.getElementById('clockLabel');
+  var status = document.getElementById('clockStatus');
+  var tag = document.getElementById('clockedInTag');
+  btn.addEventListener('click', function () {
+    clockedIn = !clockedIn;
+    btn.classList.toggle('on', clockedIn);
+    label.textContent = clockedIn ? 'Clock Out' : 'Clock In';
+    status.textContent = clockedIn ? 'You are clocked in for this visit.' : 'Tap to start your visit with Maria.';
+    tag.style.display = clockedIn ? 'inline-flex' : 'none';
+  });
+})();
+</script>
+<script src="nav.js?v=2"></script>
+</body>
+</html>
