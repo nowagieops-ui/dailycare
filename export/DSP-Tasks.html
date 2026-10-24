@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DSP App — Visit Checklist — Daily Care Support</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0}
+textarea{width:100%;padding:12px 14px;border-radius:8px;border:1px solid var(--line);font-family:inherit;font-size:14px;resize:none;}
+</style>
+</head>
+<body>
+<div class="phone-screen" style="width:390px;height:844px">
+  <div class="phone-header">
+    <h2 style="font-size:18px">Visit Checklist</h2>
+    <div class="avatar">JM</div>
+  </div>
+  <div class="phone-body">
+    <div class="stack gap-4">
+      <span class="eyebrow">Maria S. — Supported Living</span>
+      <div class="row between center">
+        <span class="muted" id="taskCount" style="font-size:13px">2 of 5 complete</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="taskProgress" style="width:40%"></div></div>
+    </div>
+
+    <div class="card-flat stack" id="taskList" style="gap:2px;padding:4px 16px">
+      <label class="checkbox-row list-row">
+        <input type="checkbox" class="task-check" checked>
+        <span style="font-size:14px">Assist with morning hygiene routine</span>
+      </label>
+      <label class="checkbox-row list-row">
+        <input type="checkbox" class="task-check" checked>
+        <span style="font-size:14px">Prepare and serve breakfast</span>
+      </label>
+      <label class="checkbox-row list-row">
+        <input type="checkbox" class="task-check">
+        <span style="font-size:14px">Administer 9:00 AM medication (per MAR)</span>
+      </label>
+      <label class="checkbox-row list-row">
+        <input type="checkbox" class="task-check">
+        <span style="font-size:14px">Light housekeeping — kitchen &amp; bathroom</span>
+      </label>
+      <label class="checkbox-row list-row">
+        <input type="checkbox" class="task-check">
+        <span style="font-size:14px">Accompany to community activity</span>
+      </label>
+    </div>
+
+    <div class="field">
+      <label for="notes">Visit notes</label>
+      <textarea id="notes" rows="4" placeholder="Anything the office should know about this visit...">Maria was in good spirits. Ate full breakfast.</textarea>
+    </div>
+
+    <a href="DSP-Home.html" class="btn btn-primary btn-block">Submit Visit Note</a>
+  </div>
+  <div class="tabbar">
+    <a href="DSP-Home.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1V16a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3.5a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="DSP-Schedule.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16M8 3v4M16 3v4M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg>
+      <span>Schedule</span>
+    </a>
+    <a href="DSP-ClockIn.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <span>Clock</span>
+    </a>
+    <a href="DSP-Tasks.html" class="tab-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12.5 11 14.5 16 9.5"/><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+      <span>Tasks</span>
+    </a>
+    <a href="DSP-Documents.html" class="tab-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>
+      <span>Docs</span>
+    </a>
+  </div>
+</div>
+<script>
+(function () {
+  var checks = document.querySelectorAll('.task-check');
+  var countEl = document.getElementById('taskCount');
+  var progressEl = document.getElementById('taskProgress');
+  function update() {
+    var done = 0;
+    checks.forEach(function (c) { if (c.checked) done++; });
+    countEl.textContent = done + ' of ' + checks.length + ' complete';
+    progressEl.style.width = Math.round((done / checks.length) * 100) + '%';
+  }
+  checks.forEach(function (c) { c.addEventListener('change', update); });
+  update();
+})();
+</script>
+</body>
+</html>

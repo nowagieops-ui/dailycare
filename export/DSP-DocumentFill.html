@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DSP App — Fill Document — Daily Care Support</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</head>
+<body>
+<div class="phone-screen" style="width:390px;height:844px">
+  <div class="phone-header">
+    <div class="row gap-12 center">
+      <a href="DSP-Documents.html" aria-label="Back" class="btn-ghost" style="padding:6px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </a>
+      <h2 style="font-size:18px">Fill Document</h2>
+    </div>
+  </div>
+  <div class="phone-body">
+    <div class="stack gap-4">
+      <span class="eyebrow">HR &amp; Compliance</span>
+      <h3 style="font-size:17px">Annual HIPAA Acknowledgment</h3>
+      <p class="muted" style="font-size:13px;line-height:1.5">Fill in the fields below. You'll see the finished document before it's submitted to your compliance file.</p>
+    </div>
+
+    <div class="field">
+      <label for="ename">Employee printed name</label>
+      <input id="ename" type="text" value="Jordan Myers">
+    </div>
+    <div class="field">
+      <label for="edate">Date</label>
+      <input id="edate" type="text" value="October 24, 2026">
+    </div>
+
+    <div class="stack gap-10">
+      <span class="eyebrow">Acknowledgment</span>
+      <label class="checkbox-row">
+        <input type="checkbox" checked>
+        <span style="font-size:14px">I have received and reviewed the agency's Notice of Privacy Practices.</span>
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" checked>
+        <span style="font-size:14px">I understand my responsibilities under HIPAA regarding the use and disclosure of client protected health information (PHI).</span>
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" checked>
+        <span style="font-size:14px">I agree to report any suspected privacy or security incident to my supervisor immediately.</span>
+      </label>
+    </div>
+
+    <a href="DSP-DocumentSign.html" class="btn btn-primary btn-block">Preview &amp; Sign</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin — Time &amp; Attendance — Daily Care Support</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</head>
+<body>
+<div class="app-shell" style="min-height:100vh">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">DC</div>
+      <div class="sidebar-brand-text">Daily Care Support<br><span style="opacity:0.7;font-weight:500">Admin Console</span></div>
+    </div>
+    <div class="sidebar-section">
+      <a href="Admin-Dashboard.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1V16a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3.5a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></svg><span class="label-text">Dashboard</span></a>
+      <a href="Admin-Scheduling.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16M8 3v4M16 3v4M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg><span class="label-text">Scheduling</span></a>
+      <a href="Admin-Staff.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c0-2.8 2.4-5 5.5-5s5.5 2.2 5.5 5"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 13.3c2 .4 3.5 2 3.5 4.2"/></svg><span class="label-text">Staff</span></a>
+      <a href="Admin-Clients.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.6-9A5.1 5.1 0 0 1 12 6a5.1 5.1 0 0 1 9.6 5.5c-2.1 4.4-9.6 9-9.6 9Z"/></svg><span class="label-text">Clients</span></a>
+      <a href="Admin-Compliance.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h3.6c.4 0 .8.2 1 .5l1 1.3c.2.3.6.5 1 .5h6.4A1.5 1.5 0 0 1 20 9.3V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18Z"/></svg><span class="label-text">eBinders</span></a>
+      <a href="Admin-Training.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5"/></svg><span class="label-text">Training &amp; Credentials</span></a>
+      <a href="Admin-Attendance.html" class="sidebar-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg><span class="label-text">Attendance</span></a>
+      <a href="Admin-Reports.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="20" x2="5" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="13"/><line x1="2" y1="20" x2="22" y2="20"/></svg><span class="label-text">Reports</span></a>
+      <a href="Admin-Settings.html" class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.7 1l-2.3-.9-2 3.4L6.6 11a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9c.5.4 1.1.8 1.7 1l.4 2.5h4l.4-2.5c.6-.2 1.2-.6 1.7-1l2.3.9 2-3.4Z"/></svg><span class="label-text">Settings</span></a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="avatar avatar-sm" style="background:rgba(255,255,255,0.14);color:#fff">PK</div>
+      <div class="stack" style="line-height:1.2"><a href="Admin-Settings.html" style="font-size:13px;font-weight:600;color:#fff" class="label-text">Pat Keller</a><a href="index.html" style="font-size:12px;color:rgba(255,255,255,0.65)" class="label-text">Exit preview</a></div>
+    </div>
+  </nav>
+
+  <div class="main-area">
+    <div class="topbar">
+      <h1 style="font-size:20px">Time &amp; Attendance</h1>
+      <div class="row gap-8">
+        <select style="padding:10px 14px;border-radius:8px;border:1px solid var(--line);font-size:13px"><option>Oct 19 – Oct 25, 2026</option><option>Oct 12 – Oct 18, 2026</option></select>
+        <button type="button" class="btn btn-secondary btn-sm">Export to payroll</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="row gap-16 wrap">
+        <div class="stat-tile"><span class="muted" style="font-size:12px">Hours logged this week</span><span class="stat-value">186.4</span></div>
+        <div class="stat-tile"><span class="muted" style="font-size:12px">Missed clock-ins</span><span class="stat-value" style="color:var(--red)">1</span></div>
+        <div class="stat-tile"><span class="muted" style="font-size:12px">Flagged for review</span><span class="stat-value" style="color:var(--amber)">2</span></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Staff</th><th>Visit</th><th>Scheduled</th><th>Clocked in/out</th><th>Hours</th><th>Flag</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">Jordan Myers</td>
+              <td class="muted">Maria S. — Supported Living</td>
+              <td class="muted">9:00 AM – 1:00 PM</td>
+              <td class="muted">9:02 AM – 1:00 PM</td>
+              <td class="muted">3.97</td>
+              <td><span class="tag tag-success">On time</span></td>
+              <td><button type="button" class="btn btn-secondary btn-sm">Approve</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Riley Sanchez</td>
+              <td class="muted">James T. — Personal Support</td>
+              <td class="muted">8:00 AM – 12:00 PM</td>
+              <td class="faint">— not clocked in —</td>
+              <td class="muted">0.00</td>
+              <td><span class="tag tag-danger">Missed clock-in</span></td>
+              <td><button type="button" class="btn btn-primary btn-sm">Review</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Alex Patel</td>
+              <td class="muted">Alex P. — Respite Care</td>
+              <td class="muted">2:00 PM – 6:00 PM</td>
+              <td class="muted">2:05 PM – 6:00 PM</td>
+              <td class="muted">3.92</td>
+              <td><span class="tag tag-warning">Late 5 min</span></td>
+              <td><button type="button" class="btn btn-secondary btn-sm">Approve</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Casey Nguyen</td>
+              <td class="muted">Sam W. — Community Development</td>
+              <td class="muted">10:00 AM – 2:00 PM</td>
+              <td class="muted">9:58 AM – 2:03 PM</td>
+              <td class="muted">4.08</td>
+              <td><span class="tag tag-warning">GPS mismatch</span></td>
+              <td><button type="button" class="btn btn-primary btn-sm">Review</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Avery Lin</td>
+              <td class="faint">Not yet assigned</td>
+              <td class="faint">—</td>
+              <td class="faint">—</td>
+              <td class="faint">—</td>
+              <td><span class="tag tag-neutral">Onboarding</span></td>
+              <td><span class="faint" style="font-size:13px">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
