@@ -7,10 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>body{margin:0}
-.shift-chip{display:flex;flex-direction:column;gap:2px;padding:6px 6px;border-radius:8px;background:var(--teal-100);font-size:11px;width:100%;box-sizing:border-box;overflow-wrap:anywhere;}
+.shift-chip{display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-radius:8px;background:var(--teal-100);font-size:11px;white-space:nowrap;}
 .shift-chip.open{background:var(--amber-100);color:var(--amber);border:1px dashed var(--amber);}
-.sched-grid{display:grid;grid-template-columns:160px repeat(7,minmax(0,1fr));min-width:830px;}
-.sched-cell{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:8px;min-height:60px;min-width:0;overflow:hidden;}
+.sched-scroll{overflow-x:auto;}
+.sched-grid{display:grid;grid-template-columns:150px repeat(7,120px);width:max-content;}
+.sched-cell{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:8px;min-height:60px;}
 .sched-head{font-size:12px;font-weight:700;color:var(--ink-soft);padding:10px 8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);background:var(--teal-50);}
 </style>
 </head>
