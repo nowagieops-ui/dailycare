@@ -36,6 +36,16 @@ body{
 body > div[style*="width:390px"]{
   margin:24px auto;
 }
+/* On real phones, fill the actual viewport width instead of staying pinned
+   at 390px — a device narrower than 390px (iPhone SE, many Android phones)
+   would otherwise force the visitor to pinch-zoom out just to see it. */
+@media (max-width:430px){
+  body > div[style*="width:390px"]{
+    width:100% !important;
+    max-width:390px;
+    margin:0 auto;
+  }
+}
 h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-0.01em;color:var(--teal-900);}
 p{margin:0;}
 a{color:var(--teal-700);text-decoration:none;}

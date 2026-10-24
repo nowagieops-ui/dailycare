@@ -104,14 +104,23 @@
   });
 
   var touchStartX = null;
+  var touchStartY = null;
   document.addEventListener('touchstart', function (e) {
+    if (e.touches.length > 1) { touchStartX = null; touchStartY = null; return; } // ignore pinch/multi-touch
     touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches.length > 1) { touchStartX = null; touchStartY = null; } // pinch started mid-gesture
   }, { passive: true });
   document.addEventListener('touchend', function (e) {
-    if (touchStartX === null) return;
+    if (touchStartX === null || touchStartY === null) return;
     var dx = e.changedTouches[0].clientX - touchStartX;
+    var dy = e.changedTouches[0].clientY - touchStartY;
     touchStartX = null;
-    if (Math.abs(dx) < 60) return;
+    touchStartY = null;
+    if (Math.abs(dx) < 70) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) return; // require a clearly horizontal gesture
     if (dx < 0 && next) location.href = next[0];
     if (dx > 0 && prev) location.href = prev[0];
   }, { passive: true });
