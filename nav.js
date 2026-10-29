@@ -35,14 +35,6 @@
     ['Admin-Notifications.html', 'Admin · Notifications'],
     ['Admin-AuditLog.html', 'Admin · Audit Log'],
     ['Admin-Settings.html', 'Admin · Settings'],
-    ['Family-Login.html', 'Family · Log In'],
-    ['Family-ForgotPassword.html', 'Family · Forgot Password'],
-    ['Family-Home.html', 'Family · Home'],
-    ['Family-CarePlan.html', 'Family · ISP / Care Plan'],
-    ['Family-DocumentSign.html', 'Family · Sign Consent (PDF)'],
-    ['Family-Visits.html', 'Family · Visit History'],
-    ['Family-Messages.html', 'Family · Messages'],
-    ['Family-Settings.html', 'Family · Settings'],
   ];
 
   function currentFile() {
