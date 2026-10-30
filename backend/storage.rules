@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function userDoc() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
+    function active() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && userDoc().active == true;
+    }
+    function isSuper() { return active() && userDoc().role == 'super_admin'; }
+    function fileDoc(id) { return firestore.get(/databases/(default)/documents/drive/$(id)).data; }
+    function inList(list) { return request.auth.uid in list || ('role:' + userDoc().role) in list; }
+
+    // Files are stored under the Firestore document id (never the original filename).
+    // Access is decided by that document, so one set of sharing rules governs both.
+    match /drive/{fileId} {
+      allow read: if active() && (isSuper() || inList(fileDoc(fileId).viewers));
+
+      allow create, update: if active()
+        && request.resource.size > 0
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/png|image/jpeg|text/plain|text/csv|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        && (isSuper() || (fileDoc(fileId).ownerId == request.auth.uid && inList(fileDoc(fileId).uploaders)));
+
+      allow delete: if isSuper();
+    }
+
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

@@ -100,3 +100,19 @@ export interface MissedClockIn {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Timestamp;
 }
+
+export interface DriveItem {
+  id: string;
+  type: 'folder' | 'file';
+  name: string;
+  parentId: string | null;
+  path: string[]; // ids of every ancestor, root first
+  ownerId: string;
+  ownShares: { key: string; level: 'view' | 'upload' }[];
+  viewers: string[]; // effective access (own + inherited)
+  uploaders: string[];
+  sharedRoot: boolean; // true where a share was set directly; staff see these at their top level
+  size?: number;
+  contentType?: string;
+  createdAt: Timestamp;
+}

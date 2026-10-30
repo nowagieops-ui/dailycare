@@ -71,6 +71,25 @@ service cloud.firestore {
       allow read, delete: if isActive() && request.auth.uid == uid;
     }
 
+    // File manager. Each item stores *effective* access lists (own shares + inherited), computed
+    // by the app when a share changes. Rules only look at those lists.
+    function driveDoc(id) { return get(/databases/$(database)/documents/drive/$(id)).data; }
+    function inList(list) { return request.auth.uid in list || ('role:' + me().role) in list; }
+    match /drive/{id} {
+      allow read: if isSuper() || (isActive() && inList(resource.data.viewers));
+      // Staff may add a file only into a folder where they have upload access, inheriting its access.
+      allow create: if isSuper() || (isActive()
+        && request.resource.data.type == 'file'
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.parentId != null
+        && inList(driveDoc(request.resource.data.parentId).uploaders)
+        && request.resource.data.viewers == driveDoc(request.resource.data.parentId).viewers
+        && request.resource.data.uploaders == driveDoc(request.resource.data.parentId).uploaders
+        && request.resource.data.ownShares.size() == 0
+        && request.resource.data.sharedRoot == false);
+      allow update, delete: if isSuper();
+    }
+
     // Everything else is closed by default.
     match /{document=**} { allow read, write: if false; }
   }

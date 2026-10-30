@@ -55,6 +55,34 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "drive",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "parentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "viewers",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "drive",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sharedRoot",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "viewers",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -156,6 +184,21 @@
     {
       "collectionGroup": "clients",
       "fieldPath": "serviceLines",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "drive",
+      "fieldPath": "name",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "drive",
+      "fieldPath": "storagePath",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "drive",
+      "fieldPath": "ownShares",
       "indexes": []
     }
   ]

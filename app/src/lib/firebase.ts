@@ -5,6 +5,7 @@ import { getAuth, initializeAuth } from 'firebase/auth';
 import { getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -37,3 +38,4 @@ export const auth =
 export const db = getFirestore(app);
 
 export const functions = getFunctions(app, 'us-central1');
+export const storage = getStorage(app);
