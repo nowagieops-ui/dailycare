@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius } from './theme';
@@ -102,6 +102,34 @@ export function Chips<T extends string | number>({
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+/** Small "i" that explains a field. Hover (web) or tap to show; tap again to pin/close. */
+export function InfoTip({ text }: { text: string }) {
+  const [pinned, setPinned] = useState(false);
+  const [hover, setHover] = useState(false);
+  return (
+    <View style={{ gap: 6 }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="More info"
+        onPress={() => setPinned((p) => !p)}
+        onHoverIn={() => setHover(true)}
+        onHoverOut={() => setHover(false)}
+        style={{
+          width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: colors.tint, borderWidth: 1, borderColor: colors.primary,
+        }}
+      >
+        <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 13 }}>i</Text>
+      </Pressable>
+      {(pinned || hover) && (
+        <View style={{ backgroundColor: colors.tint, borderRadius: radius.sm, padding: 10 }}>
+          <Text style={{ color: colors.ink, fontSize: 13, lineHeight: 18 }}>{text}</Text>
+        </View>
+      )}
     </View>
   );
 }

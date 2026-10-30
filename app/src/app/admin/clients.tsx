@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Text } from 'react-native';
-import * as Location from 'expo-location';
+import { Text, View } from 'react-native';
 import { addDoc, collection } from 'firebase/firestore';
 import { useClients } from '../../lib/admin-data';
 import { db } from '../../lib/firebase';
 import { SERVICE_LINES } from '../../lib/types';
-import { Btn, Card, Chips, Field, Muted, Pill, s, Screen } from '../../lib/ui';
+import { Btn, Card, Chips, Field, InfoTip, Muted, Pill, s, Screen } from '../../lib/ui';
 
 export default function Clients() {
   const clients = useClients();
@@ -17,14 +16,6 @@ export default function Clients() {
   const [lines, setLines] = useState<string[]>([]);
   const [tasks, setTasks] = useState('');
   const [msg, setMsg] = useState('');
-
-  async function useHere() {
-    const perm = await Location.requestForegroundPermissionsAsync();
-    if (perm.status !== 'granted') return setMsg('Location permission denied.');
-    const p = await Location.getCurrentPositionAsync({});
-    setLat(p.coords.latitude.toFixed(6));
-    setLng(p.coords.longitude.toFixed(6));
-  }
 
   const latN = Number(lat), lngN = Number(lng), radN = Number(radius);
   const valid =
@@ -45,16 +36,12 @@ export default function Clients() {
         <Text style={s.h2}>Add client</Text>
         <Field label="Name" value={name} onChangeText={setName} />
         <Field label="Address" value={address} onChangeText={setAddress} />
-        <Text style={{ fontWeight: '600' }}>Client's map location</Text>
-        <Muted>
-          This is the client's address on the map, used to check staff are on site. To get it: search the address in
-          Google Maps, right-click the pin, and click the numbers at the top of the menu to copy them. Paste the first
-          number into Latitude and the second into Longitude.
-        </Muted>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontWeight: '600' }}>Client's map location</Text>
+          <InfoTip text="The client's address on the map, used to check staff are on site. Search the address in Google Maps, right-click the pin, and click the numbers at the top of the menu to copy them. Paste the first number into Latitude and the second into Longitude." />
+        </View>
         <Field label="Latitude" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" />
         <Field label="Longitude" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" />
-        <Btn label="I'm at the client's address: fill in from my location" tone="ghost" onPress={useHere} />
-        <Muted>Only use this button while standing at the client's address. It saves where you are right now, not where the client lives.</Muted>
         <Field label="Allowed radius in metres (50–2000)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
         <Text style={{ fontWeight: '600' }}>Service lines (pick all that apply)</Text>
         <Chips
