@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 
 // These values are public identifiers, not secrets. Access is enforced by
 // Firestore security rules (firestore.rules), never by hiding this config.
-const config = {
+export const config = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'unconfigured',
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,

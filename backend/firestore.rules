@@ -11,7 +11,16 @@ service cloud.firestore {
     // Profiles: you can read your own; only admins create/change them (role changes included).
     match /users/{uid} {
       allow read: if isActive() && (request.auth.uid == uid || isAdmin());
-      allow write: if isAdmin();
+      // Only a super admin may create or change admin-level accounts; plain admins manage staff.
+      allow create, update: if isSuper() || (isAdmin()
+        && request.resource.data.role in ['staff', 'family_staff']
+        && (resource == null || resource.data.role in ['staff', 'family_staff']));
+      allow delete: if false; // deactivate with active=false instead
+    }
+
+    // Clients: admins manage; staff don't read this collection (shifts carry what they need).
+    match /clients/{id} {
+      allow read, write: if isAdmin();
     }
 
     // Shifts: staff read only their own and may change only progress fields.

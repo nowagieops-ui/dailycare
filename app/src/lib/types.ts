@@ -50,3 +50,28 @@ export interface Announcement {
 }
 
 export const isAdmin = (r: Role) => r === 'admin' || r === 'super_admin';
+
+export const SERVICE_LINES = [
+  'Residential', 'Supported Living', 'Personal Support', 'Respite',
+  'Community Development', 'Nursing Support', 'Transportation',
+] as const;
+
+export interface Client {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  serviceLines: string[]; // a client can have several
+  defaultTasks: string[];
+}
+
+export interface AlertDoc {
+  id: string;
+  type: 'left_site';
+  staffName: string;
+  clientName: string;
+  at: Timestamp;
+  resolved: boolean;
+}
