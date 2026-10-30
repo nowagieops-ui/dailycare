@@ -1,0 +1,1 @@
+{"name":"dailycare-backend","private":true,"scripts":{"fb":"firebase"},"devDependencies":{"firebase-tools":"15.33.0"}}
