@@ -45,9 +45,16 @@ export default function Clients() {
         <Text style={s.h2}>Add client</Text>
         <Field label="Name" value={name} onChangeText={setName} />
         <Field label="Address" value={address} onChangeText={setAddress} />
+        <Text style={{ fontWeight: '600' }}>Client's map location</Text>
+        <Muted>
+          This is the client's address on the map, used to check staff are on site. To get it: search the address in
+          Google Maps, right-click the pin, and click the numbers at the top of the menu to copy them. Paste the first
+          number into Latitude and the second into Longitude.
+        </Muted>
         <Field label="Latitude" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" />
         <Field label="Longitude" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" />
-        <Btn label="Use my current location" tone="ghost" onPress={useHere} />
+        <Btn label="I'm at the client's address: fill in from my location" tone="ghost" onPress={useHere} />
+        <Muted>Only use this button while standing at the client's address. It saves where you are right now, not where the client lives.</Muted>
         <Field label="Allowed radius in metres (50–2000)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
         <Text style={{ fontWeight: '600' }}>Service lines (pick all that apply)</Text>
         <Chips
