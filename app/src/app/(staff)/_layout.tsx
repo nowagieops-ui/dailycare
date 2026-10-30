@@ -10,6 +10,7 @@ export default function StaffTabs() {
       <Tabs.Screen name="notes" options={{ title: 'Daily Notes' }} />
       <Tabs.Screen name="training" options={{ href: null }} />
       <Tabs.Screen name="missed" options={{ href: null }} />
+      <Tabs.Screen name="calendar" options={{ href: null }} />
     </Tabs>
   );
 }

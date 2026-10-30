@@ -27,6 +27,7 @@ export default function Home() {
       </Card>
       <Card>
         <Link href="/training" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Training & credentials →</Link>
+        <Link href="/calendar" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Sync shifts to my calendar →</Link>
         <Link href="/missed" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Report a missed clock-in →</Link>
       </Card>
       <Text style={s.h2}>Announcements</Text>
