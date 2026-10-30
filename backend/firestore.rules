@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isActive() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && me().active == true; }
+    function isAdmin() { return isActive() && me().role in ['admin', 'super_admin']; }
+    function isSuper() { return isActive() && me().role == 'super_admin'; }
+
+    // Profiles: you can read your own; only admins create/change them (role changes included).
+    match /users/{uid} {
+      allow read: if isActive() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Shifts: staff read only their own and may change only progress fields.
+    match /shifts/{id} {
+      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isAdmin());
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isActive() && resource.data.staffId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'clockInAt', 'clockInLat', 'clockInLng', 'clockOutAt', 'tasks', 'note']) &&
+        // Server-side clock-out gate: a real note is required. (Rules can't loop over the
+        // task list, so the all-tasks-done check is enforced in the app.)
+        (request.resource.data.status != 'completed' || request.resource.data.note.size() >= 10)
+      );
+    }
+
+    // Announcements: everyone signed in reads; admins write.
+    match /announcements/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // Left-site alerts: staff may only create one about themselves; admins read/resolve.
+    match /alerts/{id} {
+      allow create: if isActive() && request.resource.data.staffId == request.auth.uid
+                    && request.resource.data.type == 'left_site';
+      allow read, update: if isAdmin();
+    }
+
+    // Everything else is closed by default.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
