@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { registerForPush } from './push';
 import type { UserProfile } from './types';
 
 interface AuthState {
@@ -52,6 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubAuth();
     };
   }, []);
+
+  const uid = profile?.uid;
+  useEffect(() => {
+    if (uid) registerForPush(uid);
+  }, [uid]);
 
   const value: AuthState = {
     loading,

@@ -64,6 +64,13 @@ service cloud.firestore {
       allow update: if isAdmin();
     }
 
+    // Device push tokens: each person writes only their own. Functions read them with admin rights.
+    match /pushTokens/{uid} {
+      allow create, update: if isActive() && request.auth.uid == uid
+                            && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt']);
+      allow read, delete: if isActive() && request.auth.uid == uid;
+    }
+
     // Everything else is closed by default.
     match /{document=**} { allow read, write: if false; }
   }
