@@ -19,6 +19,7 @@ async function saveShifts(rows: Row[]) {
     for (const r of rows.slice(i, i + MAX_BATCH)) {
       batch.set(doc(collection(db, 'shifts')), {
         staffId: r.staff.id,
+        staffName: r.staff.name,
         staffPhone: r.phone ?? r.staff.phone ?? '',
         clientId: r.client.id,
         clientName: r.client.name,

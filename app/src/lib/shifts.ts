@@ -6,12 +6,12 @@ import { db } from './firebase';
 import type { Announcement, Shift, Task } from './types';
 
 /** Staff member's shifts from 12h ago onward (so an in-progress overnight shift still shows). */
-export function useMyShifts(uid: string | undefined) {
+export function useMyShifts(uid: string | undefined, sinceHours = 12) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!uid) return;
-    const since = Timestamp.fromMillis(Date.now() - 12 * 3600 * 1000);
+    const since = Timestamp.fromMillis(Date.now() - sinceHours * 3600 * 1000);
     const q = query(
       collection(db, 'shifts'),
       where('staffId', '==', uid),
@@ -26,7 +26,7 @@ export function useMyShifts(uid: string | undefined) {
       },
       () => setLoading(false),
     );
-  }, [uid]);
+  }, [uid, sinceHours]);
   return { shifts, loading };
 }
 

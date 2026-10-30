@@ -9,6 +9,9 @@ export default function AdminTabs() {
       <Tabs.Screen name="staff" options={{ title: 'Staff' }} />
       <Tabs.Screen name="clients" options={{ title: 'Clients' }} />
       <Tabs.Screen name="announcements" options={{ title: 'Announce' }} />
+      <Tabs.Screen name="training" options={{ href: null }} />
+      <Tabs.Screen name="requests" options={{ href: null }} />
+      <Tabs.Screen name="records" options={{ href: null }} />
     </Tabs>
   );
 }

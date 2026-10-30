@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { Text } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { pickCurrent, useAnnouncements, useMyShifts } from '../../lib/shifts';
@@ -23,6 +24,10 @@ export default function Home() {
         ) : (
           <Muted>No upcoming shifts.</Muted>
         )}
+      </Card>
+      <Card>
+        <Link href="/training" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Training & credentials →</Link>
+        <Link href="/missed" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Report a missed clock-in →</Link>
       </Card>
       <Text style={s.h2}>Announcements</Text>
       {announcements.length === 0 && <Muted>Nothing new.</Muted>}

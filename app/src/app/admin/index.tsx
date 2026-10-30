@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { Text } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useOpenAlerts } from '../../lib/admin-data';
@@ -10,6 +11,11 @@ export default function Alerts() {
   const { signOutUser } = useAuth();
   return (
     <Screen title="Alerts">
+      <Card>
+        <Link href="/admin/requests" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Missed clock-in requests →</Link>
+        <Link href="/admin/training" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Trainings & certifications →</Link>
+        <Link href="/admin/records" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Visit records →</Link>
+      </Card>
       {alerts.length === 0 && <Muted>No open alerts. Everyone is where they should be.</Muted>}
       {alerts.map((a) => (
         <Card key={a.id}>

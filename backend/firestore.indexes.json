@@ -4,8 +4,56 @@
       "collectionGroup": "shifts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "staffId", "order": "ASCENDING" },
-        { "fieldPath": "start", "order": "ASCENDING" }
+        {
+          "fieldPath": "staffId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "start",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "credentials",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "staffId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresOn",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "missedClockIns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "staffId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shifts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "start",
+          "order": "DESCENDING"
+        }
       ]
     }
   ]

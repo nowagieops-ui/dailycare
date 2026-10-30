@@ -8,6 +8,8 @@ export default function StaffTabs() {
       <Tabs.Screen name="schedule" options={{ title: 'Schedule' }} />
       <Tabs.Screen name="clock-in" options={{ title: 'Clock In' }} />
       <Tabs.Screen name="notes" options={{ title: 'Daily Notes' }} />
+      <Tabs.Screen name="training" options={{ href: null }} />
+      <Tabs.Screen name="missed" options={{ href: null }} />
     </Tabs>
   );
 }

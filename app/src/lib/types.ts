@@ -22,6 +22,7 @@ export type ShiftStatus = 'scheduled' | 'clocked_in' | 'completed';
 export interface Shift {
   id: string;
   staffId: string;
+  staffName?: string;
   staffPhone?: string;
   clientId: string;
   clientName: string;
@@ -74,4 +75,28 @@ export interface AlertDoc {
   clientName: string;
   at: Timestamp;
   resolved: boolean;
+}
+
+export type CredentialKind = 'training' | 'certification' | 'document';
+
+export interface Credential {
+  id: string;
+  staffId: string;
+  staffName: string;
+  title: string;
+  kind: CredentialKind;
+  expiresOn: Timestamp;
+}
+
+export interface MissedClockIn {
+  id: string;
+  staffId: string;
+  staffName: string;
+  shiftId: string;
+  clientName: string;
+  reason: string;
+  clockIn: Timestamp;
+  clockOut: Timestamp;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Timestamp;
 }
