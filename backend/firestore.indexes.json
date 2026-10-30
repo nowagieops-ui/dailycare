@@ -56,5 +56,107 @@
         }
       ]
     }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "note",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "tasks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "clientName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "address",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "lat",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "lng",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "staffName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "staffPhone",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "clockInLat",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "shifts",
+      "fieldPath": "clockInLng",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "missedClockIns",
+      "fieldPath": "reason",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "missedClockIns",
+      "fieldPath": "clientName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alerts",
+      "fieldPath": "clientName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alerts",
+      "fieldPath": "staffName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "clients",
+      "fieldPath": "name",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "clients",
+      "fieldPath": "address",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "clients",
+      "fieldPath": "lat",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "clients",
+      "fieldPath": "lng",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "clients",
+      "fieldPath": "defaultTasks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "clients",
+      "fieldPath": "serviceLines",
+      "indexes": []
+    }
   ]
 }
