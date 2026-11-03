@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
-import { Audience, audienceLabel, FOLDERS, logEvent, type EDoc, type Folder } from '../../lib/ebinder';
+import { attachPdf, Audience, audienceLabel, FOLDERS, logEvent, type EDoc, type Folder } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
@@ -21,6 +21,7 @@ export default function EBinderNew() {
   const [body, setBody] = useState('');
   const [acks, setAcks] = useState('');
   const [version, setVersion] = useState(0);
+  const [pdf, setPdf] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -34,7 +35,7 @@ export default function EBinderNew() {
     });
   }, [id]);
 
-  const ok = title.trim() && body.trim() && (audience[0] !== 'assigned' || assigned.length > 0);
+  const ok = title.trim() && (body.trim() || pdf) && (audience[0] !== 'assigned' || assigned.length > 0);
 
   async function save() {
     if (!profile) return;
@@ -48,7 +49,9 @@ export default function EBinderNew() {
       let docId = id;
       if (id) { await updateDoc(doc(db, 'ebinderDocs', id), { ...data, version: version + 1 }); }
       else { docId = (await addDoc(collection(db, 'ebinderDocs'), { ...data, version: 1 })).id; }
-      await logEvent(docId!, profile, `${profile.name} uploaded v${id ? version + 1 : 1}`);
+      const v = id ? version + 1 : 1;
+      if (pdf) await updateDoc(doc(db, 'ebinderDocs', docId!), { pdfPath: await attachPdf(docId!, v, pdf) });
+      await logEvent(docId!, profile, `${profile.name} uploaded v${v}`);
       router.replace({ pathname: '/admin/document-detail', params: { id: docId } } as never);
     } catch { setErr('Could not save the document.'); }
     finally { setBusy(false); }
@@ -73,13 +76,22 @@ export default function EBinderNew() {
             <Chips options={[{ value: 'yes', label: 'Yes, e-signature' }, { value: 'no', label: 'No, view only' }]} selected={sign} onToggle={(v) => setSign([v])} />
           </>
         )}
+        {Platform.OS === 'web' && (
+          <>
+            <Btn label={pdf ? `PDF: ${pdf.name}` : 'Attach a PDF (optional)'} tone="ghost" onPress={() => {
+              const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/pdf';
+              i.onchange = () => { const f = i.files?.[0]; if (f && f.size < 25 * 1024 * 1024 && f.type === 'application/pdf') setPdf(f); else if (f) setErr('Choose a PDF under 25 MB.'); };
+              i.click();
+            }} />
+            <Muted>With a PDF attached, staff open the PDF and the text below is the acknowledgment shown beside it.</Muted>
+          </>
+        )}
         <Field label="Document text" value={body} onChangeText={setBody} multiline numberOfLines={8} style={[s.input, { minHeight: 160, paddingTop: 10 }]}
           placeholder="I, {{name}}, acknowledge that on {{date}} I received…" />
         <Muted>{'{{name}} and {{date}} are filled in with the signer\'s printed name and the signing date.'}</Muted>
         {sign[0] === 'yes' && <Field label="Acknowledgment lines (one per line, each must be ticked)" value={acks} onChangeText={setAcks} multiline numberOfLines={4} style={[s.input, { minHeight: 90, paddingTop: 10 }]} />}
         {err ? <Text style={{ color: '#C1554B' }}>{err}</Text> : null}
         <Btn label={id ? 'Publish new version' : 'Create document'} onPress={save} busy={busy} disabled={!ok} />
-        <Muted>Typed documents only for now. PDF upload arrives when file storage is switched on.</Muted>
       </Card>
     </Screen>
   );

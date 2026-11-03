@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   collection, doc, onSnapshot, orderBy, query, serverTimestamp, where, writeBatch, type Timestamp,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from './firebase';
 import type { UserProfile } from './types';
 
 export const FOLDERS = ['Care Plans', 'HR & Personnel', 'Waiver & Medicaid', 'Policies'] as const;
@@ -17,7 +18,8 @@ export interface EDoc {
   audience: Audience;
   assignedTo: string[]; // staff uids, used when audience is 'assigned'
   requiresSignature: boolean;
-  body: string; // may contain {{name}} and {{date}}
+  body: string; // may contain {{name}} and {{date}}; may be empty when a PDF is attached
+  pdfPath?: string; // Storage path of the attached PDF
   acks: string[]; // lines the signer must tick
   uploadedByName: string;
   updatedAt: Timestamp;
@@ -97,3 +99,10 @@ export async function signDocument(d: EDoc, who: UserProfile, typedName: string,
   b.set(doc(collection(db, 'ebinderDocs', d.id, 'events')), { at: serverTimestamp(), actorId: who.uid, actorName: who.name, text: `${who.name} signed document (v${d.version})` });
   await b.commit();
 }
+
+export async function attachPdf(docId: string, version: number, file: File): Promise<string> {
+  const path = `ebinder/${docId}/v${version}.pdf`;
+  await uploadBytes(ref(storage, path), file, { contentType: 'application/pdf' });
+  return path;
+}
+export const pdfUrl = (path: string) => getDownloadURL(ref(storage, path));

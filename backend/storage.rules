@@ -26,6 +26,17 @@ service firebase.storage {
       allow delete: if isSuper();
     }
 
+    // eBinder PDFs: path is ebinder/<docId>/v<version>.pdf; access follows the Firestore document's audience.
+    function eDoc(id) { return firestore.get(/databases/(default)/documents/ebinderDocs/$(id)).data; }
+    function isAdminUser() { return active() && userDoc().role in ['admin', 'super_admin']; }
+    match /ebinder/{docId}/{file} {
+      allow read: if isAdminUser() || (active() && (eDoc(docId).audience == 'all_staff'
+        || (eDoc(docId).audience == 'assigned' && request.auth.uid in eDoc(docId).assignedTo)));
+      allow create, update: if isAdminUser() && request.resource.size > 0 && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+      allow delete: if isAdminUser();
+    }
+
     match /{allPaths=**} { allow read, write: if false; }
   }
 }

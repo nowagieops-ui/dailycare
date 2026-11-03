@@ -1,7 +1,7 @@
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useStaff } from '../../lib/admin-data';
-import { audienceLabel, renderBody, useAdminDocs, useDocEvents, useSignatures } from '../../lib/ebinder';
+import { audienceLabel, pdfUrl, renderBody, useAdminDocs, useDocEvents, useSignatures } from '../../lib/ebinder';
 import { colors } from '../../lib/theme';
 import { Btn, Card, fmtDay, fmtTime, initials, Muted, s, Screen, Tag } from '../../lib/ui';
 
@@ -24,7 +24,8 @@ export default function DocumentDetail() {
         <Card style={{ flexGrow: 2, flexBasis: 360, minWidth: 280 }}>
           <Muted>Document preview</Muted>
           <Text style={s.h1}>{d.title}</Text>
-          <Text style={{ color: colors.ink, lineHeight: 22 }}>{renderBody(d.body, '________', '________')}</Text>
+          {d.body ? <Text style={{ color: colors.ink, lineHeight: 22 }}>{renderBody(d.body, '________', '________')}</Text> : null}
+          {d.pdfPath ? <Btn label="Open attached PDF" tone="ghost" onPress={async () => Linking.openURL(await pdfUrl(d.pdfPath!))} /> : null}
           {d.acks.map((a, i) => <Text key={i} style={{ color: colors.inkSoft }}>☐ {a}</Text>)}
         </Card>
         <View style={{ flexGrow: 1, flexBasis: 300, minWidth: 260, gap: 12 }}>

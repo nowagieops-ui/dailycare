@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../lib/auth';
-import { logEvent, renderBody, signDocument, useSignedIds, type EDoc } from '../../lib/ebinder';
+import { logEvent, pdfUrl, renderBody, signDocument, useSignedIds, type EDoc } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
 import { StaffScreen } from '../../lib/staff-ui';
 import { colors } from '../../lib/theme';
@@ -38,7 +38,8 @@ export default function DocumentScreen() {
     <Card>
       <Muted>{agency}</Muted>
       <Text style={s.h1}>{d.title}</Text>
-      <Text style={{ color: colors.ink, lineHeight: 22 }}>{renderBody(d.body, name, today)}</Text>
+      {d.body ? <Text style={{ color: colors.ink, lineHeight: 22 }}>{renderBody(d.body, name, today)}</Text> : null}
+      {d.pdfPath ? <Btn label="Open PDF" tone="ghost" onPress={async () => Linking.openURL(await pdfUrl(d.pdfPath!))} /> : null}
     </Card>
   );
 
