@@ -1,65 +1,49 @@
-import { useState } from 'react';
-import { Text, View } from 'react-native';
-import { addDoc, collection } from 'firebase/firestore';
-import { useClients } from '../../lib/admin-data';
-import { db } from '../../lib/firebase';
-import { SERVICE_LINES } from '../../lib/types';
-import { Btn, Card, Chips, Field, InfoTip, Muted, Pill, s, Screen } from '../../lib/ui';
+import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useClients, useShiftsBetween } from '../../lib/admin-data';
+import { colors } from '../../lib/theme';
+import { Btn, Card, Muted, Screen, Tag } from '../../lib/ui';
+import { addDays, startOfDay } from '../../lib/week';
 
-export default function Clients() {
+export function reviewStatus(nextReview?: string): { text: string; tone: 'green' | 'amber' | 'red' | 'neutral' } {
+  if (!nextReview) return { text: 'Not set', tone: 'neutral' };
+  const days = Math.ceil((new Date(nextReview + 'T00:00:00').getTime() - Date.now()) / 86400000);
+  if (days < 0) return { text: 'Review overdue', tone: 'red' };
+  if (days <= 30) return { text: 'Review due', tone: 'amber' };
+  return { text: 'Current', tone: 'green' };
+}
+
+const W = [1.6, 1.8, 2.2, 1.2, 0.8];
+
+export default function ClientsDirectory() {
   const clients = useClients();
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
-  const [radius, setRadius] = useState('150');
-  const [lines, setLines] = useState<string[]>([]);
-  const [tasks, setTasks] = useState('');
-  const [msg, setMsg] = useState('');
-
-  const latN = Number(lat), lngN = Number(lng), radN = Number(radius);
-  const valid =
-    name.trim() && address.trim() && lines.length > 0 &&
-    lat !== '' && lng !== '' && Math.abs(latN) <= 90 && Math.abs(lngN) <= 180 && radN >= 50 && radN <= 2000;
-
-  async function save() {
-    await addDoc(collection(db, 'clients'), {
-      name: name.trim(), address: address.trim(), lat: latN, lng: lngN, radiusM: radN, serviceLines: lines,
-      defaultTasks: tasks.split(/[;\n]/).map((t) => t.trim()).filter(Boolean),
-    });
-    setName(''); setAddress(''); setLat(''); setLng(''); setLines([]); setTasks(''); setMsg('Client added.');
-  }
+  const today = startOfDay(new Date());
+  const upcoming = useShiftsBetween(addDays(today, -14), addDays(today, 30));
+  const dsps = (id: string) => [...new Set(upcoming.filter((x) => x.clientId === id && x.staffName).map((x) => x.staffName!))].join(', ') || '—';
+  const cell = (i: number) => ({ flex: W[i], paddingRight: 8, justifyContent: 'center' as const });
 
   return (
-    <Screen title="Clients">
-      <Card>
-        <Text style={s.h2}>Add client</Text>
-        <Field label="Name" value={name} onChangeText={setName} />
-        <Field label="Address" value={address} onChangeText={setAddress} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontWeight: '600' }}>Client's map location</Text>
-          <InfoTip text="The client's address on the map, used to check staff are on site. Search the address in Google Maps, right-click the pin, and click the numbers at the top of the menu to copy them. Paste the first number into Latitude and the second into Longitude." />
+    <Screen title="Clients Directory">
+      <View style={{ alignSelf: 'flex-end', width: 160 }}><Btn label="+ Add Client" onPress={() => router.push('/admin/add-client' as never)} /></View>
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
+          {['Name', 'Service line', 'Assigned DSPs', 'Care plan', ''].map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
         </View>
-        <Field label="Latitude" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" />
-        <Field label="Longitude" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" />
-        <Field label="Allowed radius in metres (50–2000)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
-        <Text style={{ fontWeight: '600' }}>Service lines (pick all that apply)</Text>
-        <Chips
-          options={SERVICE_LINES.map((l) => ({ value: l as string, label: l }))}
-          selected={lines}
-          onToggle={(v) => setLines((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))}
-        />
-        <Field label="Default visit tasks (separate with ;)" value={tasks} onChangeText={setTasks} />
-        <Btn label="Save client" onPress={save} disabled={!valid} />
-        {msg ? <Muted>{msg}</Muted> : null}
+        {clients.length === 0 && <View style={{ padding: 12 }}><Muted>No clients yet.</Muted></View>}
+        {clients.map((c) => {
+          const st = reviewStatus(c.nextReview);
+          return (
+            <Pressable key={c.id} onPress={() => router.push({ pathname: '/admin/client-detail', params: { id: c.id } } as never)}
+              style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
+              <View style={cell(0)}><Text style={{ fontWeight: '600', color: colors.ink }}>{c.name}</Text></View>
+              <View style={cell(1)}><Text style={{ color: colors.ink }}>{c.serviceLines.join(', ')}</Text></View>
+              <View style={cell(2)}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{dsps(c.id)}</Text></View>
+              <View style={cell(3)}><Tag text={st.text} tone={st.tone} /></View>
+              <View style={cell(4)}><Text style={{ color: colors.primary, fontWeight: '600' }}>Open</Text></View>
+            </Pressable>
+          );
+        })}
       </Card>
-      {clients.map((c) => (
-        <Card key={c.id}>
-          <Text style={s.h2}>{c.name}</Text>
-          <Muted>{c.address}</Muted>
-          {c.serviceLines.map((l) => <Pill key={l} text={l} tone="blue" />)}
-        </Card>
-      ))}
     </Screen>
   );
 }

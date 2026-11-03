@@ -67,6 +67,12 @@ export interface Client {
   radiusM: number;
   serviceLines: string[]; // a client can have several
   defaultTasks: string[];
+  dob?: string; // YYYY-MM-DD
+  contactName?: string; // primary contact / guardian
+  contactPhone?: string;
+  goals?: string[]; // ISP / care plan support goals
+  lastReviewed?: string; // YYYY-MM-DD
+  nextReview?: string;
 }
 
 export interface AlertDoc {
