@@ -29,7 +29,7 @@ const MORE: Item[] = [
 ];
 
 const TITLES: Record<string, string> = {
-  '/admin/notifications': 'Notifications', '/admin/audit': 'Audit log',
+  '/admin/notifications': 'Notifications', '/admin/search': 'Search','/admin/audit': 'Audit log',
   '/admin/add-staff': 'Add staff member', '/admin/add-client': 'Add client',
 };
 const isActive = (path: string, href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(href + '/'));
