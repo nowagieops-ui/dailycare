@@ -108,6 +108,33 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // eBinder documents. Staff read what is shared with them; admins manage. Signatures and audit events are
+    // create-only (never edited or deleted), stamped with the server clock, and bound to the signer's own uid.
+    match /ebinderDocs/{id} {
+      allow read: if isAdmin() || (isActive() && (resource.data.audience == 'all_staff'
+        || (resource.data.audience == 'assigned' && request.auth.uid in resource.data.assignedTo)));
+      allow write: if isAdmin();
+
+      match /signatures/{sid} {
+        allow read: if isAdmin() || (isActive() && resource.data.staffId == request.auth.uid);
+        allow create: if isActive()
+          && request.resource.data.staffId == request.auth.uid
+          && request.resource.data.signedAt == request.time
+          && request.resource.data.version == get(/databases/$(database)/documents/ebinderDocs/$(id)).data.version
+          && sid == request.auth.uid + '_v' + string(request.resource.data.version)
+          && (get(/databases/$(database)/documents/ebinderDocs/$(id)).data.audience == 'all_staff'
+              || request.auth.uid in get(/databases/$(database)/documents/ebinderDocs/$(id)).data.assignedTo);
+        allow update, delete: if false;
+      }
+
+      match /events/{eid} {
+        allow read: if isAdmin();
+        allow create: if isActive() && request.resource.data.actorId == request.auth.uid
+                      && request.resource.data.at == request.time;
+        allow update, delete: if false;
+      }
+    }
+
     // Required-training catalog: everyone signed in reads it; admins manage it.
     match /trainings/{id} {
       allow read: if isActive();

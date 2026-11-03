@@ -4,7 +4,7 @@ import { tabIcon } from '../../lib/tab-icon';
 
 // Tab bar follows the mockup (Home, Schedule, Clock, Tasks, Docs) plus the owner's two changes:
 // "Clock" is "Clock In", and a new "Notes" tab for the daily note.
-const HIDDEN = ['training', 'missed', 'calendar', 'files', 'settings', 'notifications'];
+const HIDDEN = ['document', 'training', 'missed', 'calendar', 'files', 'settings', 'notifications'];
 
 export default function StaffTabs() {
   return (
