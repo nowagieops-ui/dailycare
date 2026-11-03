@@ -1,18 +1,26 @@
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius } from './theme';
 
+/** Set by the admin shell: the page sits inside the console chrome, so it needs no safe-area, title or narrow column. */
+export const EmbeddedCtx = createContext(false);
+
 export function Screen({ title, children, header }: { title: string; children: ReactNode; header?: ReactNode }) {
+  const embedded = useContext(EmbeddedCtx);
+  const body = (
+    <ScrollView contentContainerStyle={[s.content, embedded && { maxWidth: 1200 }]}>
+      {title && !embedded ? <Text style={s.h1} accessibilityRole="header">{title}</Text> : null}
+      {children}
+    </ScrollView>
+  );
+  if (embedded) return body;
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
       {header}
-      <ScrollView contentContainerStyle={s.content}>
-        {title ? <Text style={s.h1} accessibilityRole="header">{title}</Text> : null}
-        {children}
-      </ScrollView>
+      {body}
     </SafeAreaView>
   );
 }
