@@ -1,0 +1,8 @@
+{
+  "name": "dailycare-tools",
+  "private": true,
+  "description": "Build tooling only (EAS CLI). Kept out of the app so its audit findings never ship in the app.",
+  "devDependencies": {
+    "eas-cli": "25.1.1"
+  }
+}
