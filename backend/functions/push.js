@@ -10,6 +10,12 @@ async function tokensFor(db, uids) {
 }
 
 async function sendPush(db, uids, title, body) {
+  // In-app inbox entry for everyone, whether or not they have a device token.
+  const batch = db.batch();
+  for (const uid of new Set(uids)) {
+    batch.set(db.collection('notifications').doc(), { userId: uid, title, body, read: false, createdAt: require('firebase-admin/firestore').Timestamp.now() });
+  }
+  if (uids.length) await batch.commit();
   const targets = await tokensFor(db, [...new Set(uids)]);
   for (let i = 0; i < targets.length; i += CHUNK) {
     const part = targets.slice(i, i + CHUNK);

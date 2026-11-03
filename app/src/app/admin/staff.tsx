@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Text } from 'react-native';
 import { getApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { doc, setDoc } from 'firebase/firestore';
 import { useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
-import { auth, config, db } from '../../lib/firebase';
+import { auth, config, db, functions } from '../../lib/firebase';
 import type { Role } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, Pill, s, Screen } from '../../lib/ui';
 
@@ -39,6 +40,12 @@ export default function StaffScreen() {
   const isSuper = profile?.role === 'super_admin';
   const roles: Role[] = isSuper ? ['staff', 'family_staff', 'admin', 'super_admin'] : ['staff', 'family_staff'];
 
+  const [code, setCode] = useState('');
+  async function makeCode() {
+    const { data } = await httpsCallable<{ role: Role }, { code: string; expiresAt: number }>(functions, 'createOnboardingCode')({ role });
+    setCode(`${data.code}  ·  expires ${new Date(data.expiresAt).toLocaleDateString()} · single use`);
+  }
+
   async function create() {
     setBusy(true);
     setMsg('');
@@ -70,6 +77,12 @@ export default function StaffScreen() {
         {role === 'family_staff' && <Muted>Family Staff work like regular staff but under a specific waiver.</Muted>}
         <Btn label="Add and email invite" onPress={create} busy={busy} disabled={!name.trim() || !email.includes('@')} />
         {msg ? <Muted>{msg}</Muted> : null}
+      </Card>
+      <Card>
+        <Text style={s.h2}>Or generate an onboarding code</Text>
+        <Muted>New staff can skip email invites and create their own account in the staff app with a one-time code. The code gives them the role selected above.</Muted>
+        {code ? <Text selectable style={{ fontWeight: '700', fontSize: 15 }}>{code}</Text> : null}
+        <Btn label={code ? 'Generate new code' : 'Generate code'} tone="ghost" onPress={makeCode} disabled={role !== 'staff' && role !== 'family_staff'} />
       </Card>
       {staff.map((u) => (
         <Card key={u.id}>

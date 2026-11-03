@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { Link } from 'expo-router';
 import * as Location from 'expo-location';
 import { useAuth } from '../../lib/auth';
-import { isWithinSite, distanceM } from '../../lib/geo';
+import { distanceM, isWithinSite } from '../../lib/geo';
 import { requestLocationPermissions, startShiftGeofence, stopShiftGeofence } from '../../lib/geofence';
-import {
-  clockIn, clockOut, clockOutBlocker, isShiftTime, pickCurrent, saveTasks, useMyShifts,
-} from '../../lib/shifts';
+import { clockIn, clockOut, clockOutBlocker, isShiftTime, pickCurrent, useMyShifts } from '../../lib/shifts';
+import { StaffScreen } from '../../lib/staff-ui';
 import { colors } from '../../lib/theme';
-import { Btn, Card, fmtTime, Muted, s, Screen } from '../../lib/ui';
+import { Btn, Card, fmtTime, Muted } from '../../lib/ui';
+
+type Range = { state: 'idle' } | { state: 'denied' } | { state: 'within' } | { state: 'outside'; metres: number };
 
 export default function ClockIn() {
   const { profile } = useAuth();
@@ -16,9 +18,38 @@ export default function ClockIn() {
   const shift = pickCurrent(shifts);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [range, setRange] = useState<Range>({ state: 'idle' });
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Live "within range" check while this screen is open and a shift is due.
+  const shiftId = shift?.id;
+  const ready = shift ? isShiftTime(shift) : false;
+  useEffect(() => {
+    if (!shift || !ready || shift.status !== 'scheduled') return;
+    let stop = false;
+    const check = async () => {
+      try {
+        const perm = await Location.requestForegroundPermissionsAsync();
+        if (perm.status !== 'granted') return !stop && setRange({ state: 'denied' });
+        const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (stop) return;
+        const { latitude: la, longitude: lo, accuracy } = p.coords;
+        setRange(isWithinSite(la, lo, accuracy, shift.lat, shift.lng, shift.radiusM)
+          ? { state: 'within' } : { state: 'outside', metres: Math.round(distanceM(la, lo, shift.lat, shift.lng)) });
+      } catch { /* leave as-is */ }
+    };
+    check();
+    const t = setInterval(check, 15000);
+    return () => { stop = true; clearInterval(t); };
+  }, [shiftId, ready, shift?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!shift) {
-    return <Screen title="Clock In"><Muted>You have no upcoming shift.</Muted></Screen>;
+    return <StaffScreen title="Clock In / Out"><Muted>You have no upcoming shift.</Muted></StaffScreen>;
   }
 
   async function doClockIn() {
@@ -27,78 +58,81 @@ export default function ClockIn() {
     setMsg('');
     try {
       if (!(await requestLocationPermissions())) {
-        setMsg('Location permission ("Always") is required to clock in.');
-        return;
+        return setMsg('Location permission ("Always") is required to clock in.');
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude: lat, longitude: lng, accuracy } = pos.coords;
       if (!isWithinSite(lat, lng, accuracy, shift.lat, shift.lng, shift.radiusM)) {
         const d = Math.round(distanceM(lat, lng, shift.lat, shift.lng));
-        setMsg(`You are about ${d} m from ${shift.clientName}. Go to the client's address to clock in.`);
-        return;
+        return setMsg(`You are about ${d} m from ${shift.clientName}. Go to the client's address to clock in.`);
       }
       await clockIn(shift, lat, lng);
       await startShiftGeofence(shift.id, shift.lat, shift.lng, shift.radiusM).catch(() => {});
     } catch {
       setMsg('Could not get your location. Check that location is on and try again.');
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function doClockOut() {
     if (!shift) return;
     setBusy(true);
-    try {
-      await clockOut(shift);
-      await stopShiftGeofence().catch(() => {});
-    } finally {
-      setBusy(false);
-    }
+    try { await clockOut(shift); await stopShiftGeofence().catch(() => {}); } finally { setBusy(false); }
   }
 
-  function toggle(id: string) {
-    if (!shift || shift.status !== 'clocked_in') return;
-    saveTasks(shift.id, shift.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
-  }
-
-  const ready = isShiftTime(shift);
   const blocker = clockOutBlocker(shift);
+  const rangeText =
+    range.state === 'within' ? 'Within range' : range.state === 'outside' ? `${range.metres} m from the client` :
+    range.state === 'denied' ? 'Location is off' : 'Checking your location…';
+  const rangeColor = range.state === 'within' ? colors.green : range.state === 'idle' ? colors.inkFaint : colors.red;
 
   return (
-    <Screen title="Clock In">
+    <StaffScreen title="Clock In / Out">
+      <View style={{ alignItems: 'center', gap: 2, paddingVertical: 8 }}>
+        <Muted>{now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</Muted>
+        <Text style={{ fontSize: 40, fontWeight: '800', color: colors.navy }}>
+          {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        </Text>
+      </View>
+
       <Card>
-        <Text style={s.h2}>{shift.clientName}</Text>
-        <Muted>{shift.address}</Muted>
+        <Text style={{ fontSize: 16, fontWeight: '700' }}>{shift.clientName} — {shift.serviceLine}</Text>
+        {shift.status === 'scheduled' && ready && (
+          <Text style={{ color: rangeColor, fontWeight: '600', fontSize: 13 }}>{rangeText} · {shift.address}</Text>
+        )}
         <Muted>{fmtTime(shift.start.toMillis())} – {fmtTime(shift.end.toMillis())}</Muted>
       </Card>
 
-      {!ready && <Muted>Your checklist and clock-in unlock 15 minutes before the shift starts.</Muted>}
+      {!ready && <Muted>Clock-in opens 15 minutes before your shift starts.</Muted>}
 
       {ready && shift.status === 'scheduled' && (
-        <Btn label="Clock In" onPress={doClockIn} busy={busy} />
+        <>
+          <Btn label="Clock In" onPress={doClockIn} busy={busy} />
+          <Muted>Tap to start your visit with {shift.clientName}.</Muted>
+        </>
       )}
 
-      {ready && shift.status === 'clocked_in' && (
+      {shift.status === 'clocked_in' && (
         <>
-          <Card>
-            <Text style={s.h2}>Visit checklist</Text>
-            {shift.tasks.map((t) => (
-              <Pressable
-                key={t.id} onPress={() => toggle(t.id)} accessibilityRole="checkbox"
-                accessibilityState={{ checked: t.done }} style={{ paddingVertical: 10 }}
-              >
-                <Text style={{ fontSize: 16, color: t.done ? colors.green : colors.ink }}>
-                  {t.done ? '☑' : '☐'}  {t.label}
-                </Text>
-              </Pressable>
-            ))}
+          <Card style={{ backgroundColor: colors.greenBg, borderColor: colors.greenBg }}>
+            <Text style={{ color: colors.green, fontWeight: '700' }}>
+              Clocked in at {shift.clockInAt ? fmtTime(shift.clockInAt.toMillis()) : ''}
+            </Text>
           </Card>
-          {blocker && <Text style={{ color: colors.amber, fontWeight: '600' }}>To clock out: {blocker}.</Text>}
+          {blocker && (
+            <Card>
+              <Text style={{ color: colors.amber, fontWeight: '700' }}>Before you can clock out</Text>
+              <Muted>{blocker}.</Muted>
+              <View style={{ flexDirection: 'row', gap: 16 }}>
+                <Link href="/tasks" style={{ color: colors.primary, fontWeight: '700' }}>Open Tasks →</Link>
+                <Link href="/notes" style={{ color: colors.primary, fontWeight: '700' }}>Open Notes →</Link>
+              </View>
+            </Card>
+          )}
           <Btn label="Clock Out" tone="danger" onPress={doClockOut} busy={busy} disabled={!!blocker} />
         </>
       )}
       {msg ? <Text style={{ color: colors.red }}>{msg}</Text> : null}
-    </Screen>
+      <Pressable><Link href="/missed" style={{ color: colors.primary, fontWeight: '600', textAlign: 'center' }}>Report a missed clock-in instead</Link></Pressable>
+    </StaffScreen>
   );
 }

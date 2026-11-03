@@ -90,6 +90,18 @@ service cloud.firestore {
       allow update, delete: if isSuper();
     }
 
+    // In-app notification inbox: written by Cloud Functions; people read their own and mark them read.
+    match /notifications/{id} {
+      allow read: if isActive() && resource.data.userId == request.auth.uid;
+      allow update: if isActive() && resource.data.userId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+
+    // Personal settings toggles.
+    match /userPrefs/{uid} {
+      allow read, write: if isActive() && request.auth.uid == uid;
+    }
+
     // Everything else is closed by default.
     match /{document=**} { allow read, write: if false; }
   }

@@ -1,13 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius } from './theme';
 
-export function Screen({ title, children }: { title: string; children: ReactNode }) {
+export function Screen({ title, children, header }: { title: string; children: ReactNode; header?: ReactNode }) {
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
+      {header}
       <ScrollView contentContainerStyle={s.content}>
-        <Text style={s.h1} accessibilityRole="header">{title}</Text>
+        {title ? <Text style={s.h1} accessibilityRole="header">{title}</Text> : null}
         {children}
       </ScrollView>
     </SafeAreaView>
@@ -130,6 +133,80 @@ export function InfoTip({ text }: { text: string }) {
           <Text style={{ color: colors.ink, fontSize: 13, lineHeight: 18 }}>{text}</Text>
         </View>
       )}
+    </View>
+  );
+}
+
+// ---- Mockup components (card styles, tags, stat tiles, header) ----
+
+export const Eyebrow = ({ children }: { children: ReactNode }) => (
+  <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', color: colors.inkFaint }}>{children}</Text>
+);
+
+type Tone = 'green' | 'amber' | 'red' | 'blue' | 'neutral';
+const TAG: Record<Tone, [string, string]> = {
+  green: [colors.greenBg, colors.green], amber: [colors.amberBg, colors.amber], red: [colors.redBg, colors.red],
+  blue: [colors.tint, colors.primary], neutral: ['#EEF0EE', colors.inkSoft],
+};
+export function Tag({ text, tone = 'neutral' }: { text: string; tone?: Tone }) {
+  return (
+    <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: TAG[tone][0] }}>
+      <Text style={{ color: TAG[tone][1], fontWeight: '700', fontSize: 12 }}>{text}</Text>
+    </View>
+  );
+}
+
+export function StatTile({ label, value }: { label: string; value: string | number }) {
+  return (
+    <View style={[s.card, { flex: 1, gap: 4 }]}>
+      <Text style={{ fontSize: 12, color: colors.inkSoft }}>{label}</Text>
+      <Text style={{ fontSize: 28, fontWeight: '800', color: colors.navy }}>{value}</Text>
+    </View>
+  );
+}
+
+/** Tappable card row with an icon bubble and chevron (mockup "card-flat" link). */
+export function RowLink({
+  icon, tint = colors.primary, bg = colors.tint, title, sub, href,
+}: { icon: keyof typeof Ionicons.glyphMap; tint?: string; bg?: string; title: string; sub?: string; href: string }) {
+  return (
+    <Pressable onPress={() => router.push(href as never)} accessibilityRole="link" style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>{title}</Text>
+        {sub ? <Text style={{ fontSize: 12, color: colors.inkFaint }}>{sub}</Text> : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+    </Pressable>
+  );
+}
+
+export const initials = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+
+/** Staff app header from the mockup: avatar + name/role on the left, bell and settings on the right. */
+export function StaffHeader({ name, roleLabel }: { name: string; roleLabel: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.paper, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{initials(name)}</Text>
+        </View>
+        <View>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ink }}>{name}</Text>
+          <Text style={{ fontSize: 12, color: colors.inkFaint }}>{roleLabel}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 4 }}>
+        <Pressable accessibilityLabel="Open notifications" onPress={() => router.push('/notifications' as never)} style={{ padding: 8 }}>
+          <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+        </Pressable>
+        <Pressable accessibilityLabel="Open settings" onPress={() => router.push('/settings' as never)} style={{ padding: 8 }}>
+          <Ionicons name="settings-outline" size={22} color={colors.primary} />
+        </Pressable>
+      </View>
     </View>
   );
 }

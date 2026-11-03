@@ -1,45 +1,74 @@
-import { Link } from 'expo-router';
-import { Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useAuth } from '../../lib/auth';
+import { useCredentials } from '../../lib/credentials';
+import { daysLeft } from '../../lib/expiry';
 import { pickCurrent, useAnnouncements, useMyShifts } from '../../lib/shifts';
-import { Btn, Card, fmtDay, fmtTime, Muted, Pill, s, Screen } from '../../lib/ui';
+import { StaffScreen } from '../../lib/staff-ui';
+import { colors } from '../../lib/theme';
+import { Btn, Card, Eyebrow, fmtTime, Muted, RowLink, s, StatTile, Tag } from '../../lib/ui';
+import { greeting, hoursWorked, sameDay, startOfWeek, addDays } from '../../lib/week';
 
 export default function Home() {
-  const { profile, signOutUser } = useAuth();
-  const { shifts } = useMyShifts(profile?.uid);
+  const { profile } = useAuth();
+  const { shifts } = useMyShifts(profile?.uid, 24 * 8);
   const announcements = useAnnouncements();
+  const creds = useCredentials(profile?.uid);
+  const now = new Date();
   const next = pickCurrent(shifts);
+  const isToday = next ? sameDay(new Date(next.start.toMillis()), now) : false;
+  const hours = hoursWorked(shifts, startOfWeek(now), addDays(startOfWeek(now), 7));
+  const tasksDue = next?.status === 'clocked_in' || (next && isToday) ? next.tasks.filter((t) => !t.done).length : 0;
+  const latest = announcements[0];
+  const fresh = latest && Date.now() - latest.createdAt.toMillis() < 48 * 3600 * 1000;
+  const soonest = creds.find((c) => daysLeft(c.expiresOn.toMillis()) <= 90);
 
   return (
-    <Screen title={`Hi, ${profile?.name.split(' ')[0] ?? ''}`}>
+    <StaffScreen title="">
+      <View style={{ gap: 4 }}>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: colors.navy }}>
+          {greeting(now)}, {profile?.name.split(' ')[0]}
+        </Text>
+        <Muted>{now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</Muted>
+      </View>
+
       <Card>
-        <Text style={s.h2}>{next?.status === 'clocked_in' ? 'On shift now' : 'Next shift'}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Eyebrow>{isToday ? "Today's shift" : 'Next shift'}</Eyebrow>
+          {next && <Tag text={next.status === 'clocked_in' ? 'In progress' : 'Upcoming'} tone={next.status === 'clocked_in' ? 'green' : 'blue'} />}
+        </View>
         {next ? (
           <>
-            <Text style={{ fontSize: 18, fontWeight: '700' }}>{next.clientName}</Text>
-            <Muted>{fmtDay(next.start.toMillis())} · {fmtTime(next.start.toMillis())}–{fmtTime(next.end.toMillis())}</Muted>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.ink }}>{next.clientName} — {next.serviceLine}</Text>
+            <Muted>{isToday ? '' : `${new Date(next.start.toMillis()).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · `}{fmtTime(next.start.toMillis())} – {fmtTime(next.end.toMillis())}</Muted>
             <Muted>{next.address}</Muted>
-            <Pill text={next.serviceLine} tone="blue" />
+            <Btn label={next.status === 'clocked_in' ? 'Open shift' : 'Clock In'} onPress={() => router.push('/clock-in')} />
           </>
         ) : (
           <Muted>No upcoming shifts.</Muted>
         )}
       </Card>
-      <Card>
-        <Link href="/training" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Training & credentials →</Link>
-        <Link href="/files" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Shared files →</Link>
-        <Link href="/calendar" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Sync shifts to my calendar →</Link>
-        <Link href="/missed" style={{ color: '#373CB6', fontWeight: '700', paddingVertical: 6 }}>Report a missed clock-in →</Link>
-      </Card>
-      <Text style={s.h2}>Announcements</Text>
-      {announcements.length === 0 && <Muted>Nothing new.</Muted>}
-      {announcements.map((a) => (
-        <Card key={a.id}>
-          <Text style={{ fontWeight: '700' }}>{a.title}</Text>
-          <Muted>{a.body}</Muted>
+
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <StatTile label="Hours this week" value={hours} />
+        <StatTile label="Tasks due today" value={tasksDue} />
+      </View>
+
+      {latest && (
+        <Card>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Eyebrow>Agency announcement</Eyebrow>
+            {fresh && <Tag text="New" />}
+          </View>
+          <Text style={{ fontWeight: '700' }}>{latest.title}</Text>
+          <Text style={{ fontSize: 14, color: colors.ink }}>{latest.body}</Text>
         </Card>
-      ))}
-      <Btn label="Log out" tone="ghost" onPress={signOutUser} />
-    </Screen>
+      )}
+
+      <RowLink
+        icon="school-outline" title="Training & Credentials" href="/training"
+        sub={soonest ? `${soonest.title} ${daysLeft(soonest.expiresOn.toMillis()) < 0 ? 'has expired' : `expires in ${daysLeft(soonest.expiresOn.toMillis())} days`}` : 'All up to date'}
+      />
+    </StaffScreen>
   );
 }

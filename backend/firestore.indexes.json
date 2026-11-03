@@ -83,6 +83,20 @@
           "arrayConfig": "CONTAINS"
         }
       ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -199,6 +213,16 @@
     {
       "collectionGroup": "drive",
       "fieldPath": "ownShares",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "notifications",
+      "fieldPath": "title",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "notifications",
+      "fieldPath": "body",
       "indexes": []
     }
   ]

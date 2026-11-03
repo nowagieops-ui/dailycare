@@ -4,6 +4,8 @@ const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https')
 const { setGlobalOptions } = require('firebase-functions/v2');
 const crypto = require('node:crypto');
 const { buildCalendar } = require('./ics');
+const { getAuth } = require('firebase-admin/auth');
+const { newCode, validateSignup, DAYS } = require('./onboarding');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { daysLeft, shouldRemind, reminderText } = require('./expiry');
@@ -80,4 +82,52 @@ exports.calendar = onRequest({ invoker: 'public', cors: false }, async (req, res
   res.set('Content-Type', 'text/calendar; charset=utf-8');
   res.set('Cache-Control', 'private, no-store');
   res.send(buildCalendar(shifts));
+});
+
+const ASSIGNABLE = ['staff', 'family_staff'];
+
+/** Admin creates a single-use onboarding code (valid 7 days) for a new staff member. */
+exports.createOnboardingCode = onCall(async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const me = await db.collection('users').doc(req.auth.uid).get();
+  const role = me.exists && me.data().active === true ? me.data().role : null;
+  if (role !== 'admin' && role !== 'super_admin') throw new HttpsError('permission-denied', 'Admins only.');
+  const asRole = req.data?.role;
+  if (!ASSIGNABLE.includes(asRole)) throw new HttpsError('invalid-argument', 'Choose staff or family staff.');
+  const code = newCode();
+  const expiresAt = Timestamp.fromMillis(Date.now() + DAYS * 86400000);
+  await db.collection('onboardingCodes').doc(code).create({ role: asRole, createdBy: req.auth.uid, createdAt: Timestamp.now(), expiresAt, used: false });
+  return { code, expiresAt: expiresAt.toMillis() };
+});
+
+/**
+ * New staff create their own account with a code. Runs on the server so the code is checked and
+ * burned atomically; every failure returns the same message so codes can't be probed.
+ */
+exports.redeemOnboardingCode = onCall(async (req) => {
+  const d = req.data ?? {};
+  const bad = validateSignup(d);
+  if (bad) throw new HttpsError('invalid-argument', bad);
+  const code = d.code.trim().toUpperCase();
+  const ref = db.collection('onboardingCodes').doc(code);
+  const fail = () => new HttpsError('not-found', 'Invalid or expired code.');
+
+  const role = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const c = snap.data();
+    if (!snap.exists || c.used || c.expiresAt.toMillis() < Date.now()) throw fail();
+    tx.update(ref, { used: true, usedAt: Timestamp.now() });
+    return c.role;
+  });
+
+  try {
+    const user = await getAuth().createUser({ email: d.email.trim(), password: d.password, displayName: d.name.trim() });
+    await db.collection('users').doc(user.uid).set({ name: d.name.trim(), email: d.email.trim().toLowerCase(), phone: '', role, active: true });
+    await ref.update({ usedBy: user.uid });
+    return { ok: true };
+  } catch (e) {
+    await ref.update({ used: false, usedAt: null }); // account creation failed (e.g. email taken): give the code back
+    if (e.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'An account with that email already exists.');
+    throw new HttpsError('internal', 'Could not create the account.');
+  }
 });

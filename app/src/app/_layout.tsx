@@ -14,7 +14,7 @@ function Guard() {
       </View>
     );
   }
-  const onLogin = segments[0] === 'login';
+  const onLogin = ['login', 'forgot-password', 'onboarding'].includes(segments[0] as string);
   if (!profile) return onLogin ? <Slot /> : <Redirect href="/login" />;
   // Role-based landing: admins -> /admin, everyone else -> staff tabs.
   const home = isAdmin(profile.role) ? '/admin' : '/(staff)';
