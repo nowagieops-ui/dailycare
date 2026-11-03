@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Platform, Text } from 'react-native';
 import { collection, doc, writeBatch, Timestamp } from 'firebase/firestore';
+import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useStaff } from '../../lib/admin-data';
 import { parseCsv, SHIFT_TEMPLATE, SHIFT_TEMPLATE_HEADERS } from '../../lib/csv';
 import { db } from '../../lib/firebase';
@@ -157,9 +158,9 @@ export default function AddShift() {
         <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={pickClient} />
         <Field label="Shift location (address)" value={address} onChangeText={setAddress} />
         <Field label="Allowed radius (metres)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
-        <Field label="Start date (YYYY-MM-DD)" value={date} onChangeText={setDate} placeholder="2026-11-02" />
-        <Field label="Start time (24h)" value={startT} onChangeText={setStartT} />
-        <Field label="End time (24h)" value={endT} onChangeText={setEndT} />
+        <DateField label="Start date" value={date} onChange={setDate} />
+        <TimeField label="Start time" value={startT} onChange={setStartT} />
+        <TimeField label="End time" value={endT} onChange={setEndT} />
 
         <Text style={{ fontWeight: '600' }}>Repeat</Text>
         <Chips<Pattern>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
+import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useShiftsBetween } from '../../lib/admin-data';
 import { audienceLabel, useAdminDocs } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
@@ -68,8 +69,8 @@ export default function ClientDetail() {
         <Card>
           <Text style={s.h2}>Support goals</Text>
           <Field label="One goal per line" value={goals} onChangeText={setGoals} multiline numberOfLines={5} style={[s.input, { minHeight: 110, paddingTop: 10 }]} />
-          <Field label="Last reviewed (YYYY-MM-DD)" value={last} onChangeText={setLast} />
-          <Field label="Next review (YYYY-MM-DD)" value={next} onChangeText={setNext} />
+          <DateField label="Last reviewed" value={last} onChange={setLast} optional />
+          <DateField label="Next review" value={next} onChange={setNext} optional />
           <Btn label="Save care plan" onPress={save} />
           {msg ? <Muted>{msg}</Muted> : null}
         </Card>

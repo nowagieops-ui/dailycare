@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { DateField } from '../../components/DateTimeFields';
 import { useAuth } from '../../lib/auth';
 import { initialValues, submitForm, useTemplates, type Answer, type FormField } from '../../lib/forms';
 import { useMyShifts } from '../../lib/shifts';
@@ -61,6 +62,13 @@ export default function FormFill() {
           </View>
         </View>
       );
+    }
+    if (f.type === 'date') {
+      // Stored as readable text ("November 3, 2026") because that is what is written into the PDF.
+      const d = new Date(String(val));
+      const iso = isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return <DateField label={`${f.label}${f.required ? ' *' : ''}`} value={iso}
+        onChange={(v) => set(f.key, v ? new Date(`${v}T12:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '')} />;
     }
     if (f.type === 'signature') {
       const typed = typeof val === 'object' ? val.typed : '';

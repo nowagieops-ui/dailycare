@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { addDoc, collection } from 'firebase/firestore';
+import { DateField, TimeField } from '../../components/DateTimeFields';
 import { db } from '../../lib/firebase';
 import { SERVICE_LINES } from '../../lib/types';
 import { Btn, Card, Chips, Field, InfoTip, Muted, s, Screen } from '../../lib/ui';
@@ -37,7 +38,7 @@ export default function AddClient() {
       <Card>
         <Text style={s.h2}>Client information</Text>
         <Field label="Full name" value={name} onChangeText={setName} />
-        <Field label="Date of birth (YYYY-MM-DD)" value={dob} onChangeText={setDob} placeholder="1980-04-23" />
+        <DateField label="Date of birth" value={dob} onChange={setDob} optional />
         <Field label="Primary contact / guardian" value={contactName} onChangeText={setContactName} />
         <Field label="Contact phone" value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" />
         <Field label="Address" value={address} onChangeText={setAddress} />

@@ -4,6 +4,7 @@ import { getApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, setDoc } from 'firebase/firestore';
+import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useAuth } from '../../lib/auth';
 import { auth, config, db, functions } from '../../lib/firebase';
 import type { Role } from '../../lib/types';
@@ -71,7 +72,7 @@ export default function AddStaff() {
         <Field label="Full name" value={name} onChangeText={setName} />
         <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
         <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <Field label="Start date (YYYY-MM-DD, optional)" value={startDate} onChangeText={setStartDate} placeholder="2026-11-02" />
+        <DateField label="Start date (optional)" value={startDate} onChange={setStartDate} optional />
         <Text style={{ fontWeight: '600' }}>Role</Text>
         <Chips options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} selected={[role]} onToggle={setRole} />
         {role === 'family_staff' && <Muted>Family Staff work like regular staff but under a specific waiver.</Muted>}

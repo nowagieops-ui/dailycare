@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { addDoc, collection, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useStaff } from '../../lib/admin-data';
 import { hasTraining, stageOf, stageTone, useCredentials, useRequiredTrainings } from '../../lib/credentials';
 import { daysLeft, stageLabel } from '../../lib/expiry';
@@ -97,7 +98,7 @@ export default function AdminTraining() {
         <Muted>Band (optional)</Muted>
         <Chips<TrainingBand> options={BANDS.map((b) => ({ value: b, label: b }))} selected={band} onToggle={(v) => setBand((c) => (c[0] === v ? [] : [v]))} />
         <Field label="Name (e.g. CPR, COVID-19 Infection Control)" value={title} onChangeText={setTitle} />
-        <Field label="Expires on (YYYY-MM-DD)" value={exp} onChangeText={setExp} />
+        <DateField label="Expires on" value={exp} onChange={setExp} />
         <Btn label="Save" onPress={add} disabled={!person || !title.trim() || !expDate} />
         <Muted>Staff and admins are reminded at 3 months, 2 months, 1 month and 1 week, then daily until the date, then weekly if it lapses.</Muted>
       </Card>

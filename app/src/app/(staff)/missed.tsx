@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
+import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/firebase';
 import { atTime } from '../../lib/recurrence';
@@ -43,8 +44,8 @@ export default function Missed() {
         <Text style={s.h2}>Which shift?</Text>
         {open.length === 0 && <Muted>No unfinished shifts from the last 7 days.</Muted>}
         <Chips options={open.map((x) => ({ value: x.id, label: `${fmtDay(x.start.toMillis())} · ${x.clientName}` }))} selected={pick} onToggle={(v) => setPick([v])} />
-        <Field label="Time you actually started (24h, e.g. 09:00)" value={inT} onChangeText={setInT} />
-        <Field label="Time you actually finished (24h)" value={outT} onChangeText={setOutT} />
+        <TimeField label="Time you actually started" value={inT} onChange={setInT} />
+        <TimeField label="Time you actually finished" value={outT} onChange={setOutT} />
         <Field label="Why was the clock-in missed? (min 10 characters)" value={reason} onChangeText={setReason} multiline
           style={[s.input, { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 }]} />
         <Btn label="Submit for approval" onPress={submit} disabled={!ok} />
