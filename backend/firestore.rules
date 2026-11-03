@@ -102,6 +102,17 @@ service cloud.firestore {
       allow read, write: if isActive() && request.auth.uid == uid;
     }
 
+    // Agency profile (name, phone, address): everyone signed in can read it (staff app shows the office phone).
+    match /settings/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // Audit log: written only by Cloud Functions; admins read.
+    match /auditLog/{id} {
+      allow read: if isAdmin();
+    }
+
     // Everything else is closed by default.
     match /{document=**} { allow read, write: if false; }
   }

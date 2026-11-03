@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
@@ -130,4 +130,48 @@ exports.redeemOnboardingCode = onCall(async (req) => {
     if (e.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'An account with that email already exists.');
     throw new HttpsError('internal', 'Could not create the account.');
   }
+});
+
+// ---- Audit log -------------------------------------------------------------
+// Firestore triggers cannot see who made a change, so each entry records WHAT happened and to whom,
+// not an authenticated actor. Only server code writes this collection (rules deny clients).
+const audit = (event, text) =>
+  db.collection('auditLog').add({ at: Timestamp.now(), event, text });
+
+const who = (d) => d?.staffName || d?.name || 'a staff member';
+
+exports.auditShifts = onDocumentWritten('shifts/{id}', async (e) => {
+  const a = e.data?.before?.data(), b = e.data?.after?.data();
+  if (!a && b) return audit('shift.created', `Shift created for ${b.staffId ? who(b) : 'an open slot'} (${b.serviceLine})`);
+  if (a && !b) return audit('shift.deleted', `Shift deleted for ${a.staffId ? who(a) : 'an open slot'} (${a.serviceLine})`);
+  if (!a || !b) return;
+  if (!a.clockInAt && b.clockInAt) return audit('shift.clock_in', `${who(b)} clocked in (${b.serviceLine})`);
+  if (!a.clockOutAt && b.clockOutAt) return audit('shift.clock_out', `${who(b)} clocked out (${b.serviceLine})`);
+  if (!a.approved && b.approved) return audit('shift.approved', `Timesheet approved for ${who(b)}`);
+  if (!a.staffId && b.staffId) return audit('shift.assigned', `Open shift assigned to ${who(b)}`);
+});
+
+exports.auditUsers = onDocumentWritten('users/{id}', async (e) => {
+  const a = e.data?.before?.data(), b = e.data?.after?.data();
+  if (!a && b) return audit('user.created', `Account created for ${b.name} (${b.role})`);
+  if (a && b && a.active !== b.active) return audit('user.active', `${b.name} ${b.active ? 'reactivated' : 'deactivated'}`);
+  if (a && b && a.role !== b.role) return audit('user.role', `${b.name} role changed to ${b.role}`);
+});
+
+exports.auditClients = onDocumentWritten('clients/{id}', async (e) => {
+  const a = e.data?.before?.data(), b = e.data?.after?.data();
+  if (!a && b) return audit('client.created', 'A client record was created');
+  if (a && !b) return audit('client.deleted', 'A client record was deleted');
+});
+
+exports.auditMissed = onDocumentWritten('missedClockIns/{id}', async (e) => {
+  const a = e.data?.before?.data(), b = e.data?.after?.data();
+  if (!a && b) return audit('missed.reported', `${who(b)} reported a missed clock-in`);
+  if (a && b && a.status !== b.status) return audit('missed.' + b.status, `Missed clock-in for ${who(b)} ${b.status}`);
+});
+
+exports.auditCredentials = onDocumentWritten('credentials/{id}', async (e) => {
+  const a = e.data?.before?.data(), b = e.data?.after?.data();
+  if (!a && b) return audit('credential.added', `${b.title} added for ${b.staffName}`);
+  if (a && !b) return audit('credential.removed', `${a.title} removed for ${a.staffName}`);
 });
