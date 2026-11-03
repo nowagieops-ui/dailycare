@@ -5,7 +5,7 @@ import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/firebase';
 import { usePrefs } from '../../lib/prefs';
 import { colors } from '../../lib/theme';
-import { SERVICE_LINES } from '../../lib/types';
+import { canAdminister, SERVICE_LINES } from '../../lib/types';
 import { Btn, Card, Field, Muted, s, Screen, Tag } from '../../lib/ui';
 
 const ROLES: [string, string[]][] = [
@@ -22,6 +22,7 @@ export default function AdminSettings() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [msg, setMsg] = useState('');
+  const canEdit = canAdminister(profile?.role);
 
   useEffect(() => onSnapshot(doc(db, 'settings', 'agency'), (d) => {
     const v = d.data();
@@ -40,7 +41,7 @@ export default function AdminSettings() {
         <Field label="Agency name" value={name} onChangeText={setName} />
         <Field label="Primary phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Field label="Address" value={address} onChangeText={setAddress} />
-        <Btn label="Save changes" onPress={save} />
+        {canEdit && <Btn label="Save changes" onPress={save} />}
         {msg ? <Muted>{msg}</Muted> : null}
       </Card>
 

@@ -10,7 +10,7 @@ import type { Role } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
 const ROLE_LABEL: Record<Role, string> = {
-  staff: 'Staff', family_staff: 'Family Staff', admin: 'Admin', super_admin: 'Super Admin',
+  staff: 'Staff', family_staff: 'Family Staff', admin: 'Admin', super_admin: 'Super Admin', case_manager: 'Case Manager',
 };
 
 /** A second Firebase app instance, so creating an account doesn't sign the admin out. */
@@ -37,7 +37,7 @@ export default function AddStaff() {
   const [msg, setMsg] = useState('');
 
   const isSuper = profile?.role === 'super_admin';
-  const roles: Role[] = isSuper ? ['staff', 'family_staff', 'admin', 'super_admin'] : ['staff', 'family_staff'];
+  const roles: Role[] = isSuper ? ['staff', 'family_staff', 'case_manager', 'admin', 'super_admin'] : ['staff', 'family_staff'];
 
   const [code, setCode] = useState('');
   async function makeCode() {

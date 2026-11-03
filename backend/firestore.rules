@@ -6,11 +6,14 @@ service cloud.firestore {
     function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function isActive() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && me().active == true; }
     function isAdmin() { return isActive() && me().role in ['admin', 'super_admin']; }
+    // Case managers use the admin console: they read everything needed for care coordination and manage
+    // clients, eBinder documents and credentials, but cannot touch schedules, accounts, settings or the audit log.
+    function isOffice() { return isActive() && me().role in ['admin', 'super_admin', 'case_manager']; }
     function isSuper() { return isActive() && me().role == 'super_admin'; }
 
     // Profiles: you can read your own; only admins create/change them (role changes included).
     match /users/{uid} {
-      allow read: if isActive() && (request.auth.uid == uid || isAdmin());
+      allow read: if isActive() && (request.auth.uid == uid || isOffice());
       // Only a super admin may create or change admin-level accounts; plain admins manage staff.
       allow create, update: if isSuper() || (isAdmin()
         && request.resource.data.role in ['staff', 'family_staff']
@@ -20,12 +23,12 @@ service cloud.firestore {
 
     // Clients: admins manage; staff don't read this collection (shifts carry what they need).
     match /clients/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isOffice();
     }
 
     // Shifts: staff read only their own and may change only progress fields.
     match /shifts/{id} {
-      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isAdmin());
+      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isOffice());
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
         isActive() && resource.data.staffId == request.auth.uid &&
@@ -47,20 +50,21 @@ service cloud.firestore {
     match /alerts/{id} {
       allow create: if isActive() && request.resource.data.staffId == request.auth.uid
                     && request.resource.data.type == 'left_site';
-      allow read, update: if isAdmin();
+      allow read: if isOffice();
+      allow update: if isAdmin();
     }
 
     // Training / certification / document expiries: staff read their own; admins manage.
     match /credentials/{id} {
-      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isAdmin());
-      allow write: if isAdmin();
+      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isOffice());
+      allow write: if isOffice();
     }
 
     // Missed clock-in requests: staff file one for themselves (pending); only admins decide.
     match /missedClockIns/{id} {
       allow create: if isActive() && request.resource.data.staffId == request.auth.uid
                     && request.resource.data.status == 'pending';
-      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isAdmin());
+      allow read: if isActive() && (resource.data.staffId == request.auth.uid || isOffice());
       allow update: if isAdmin();
     }
 
@@ -111,12 +115,12 @@ service cloud.firestore {
     // eBinder documents. Staff read what is shared with them; admins manage. Signatures and audit events are
     // create-only (never edited or deleted), stamped with the server clock, and bound to the signer's own uid.
     match /ebinderDocs/{id} {
-      allow read: if isAdmin() || (isActive() && (resource.data.audience == 'all_staff'
+      allow read: if isOffice() || (isActive() && (resource.data.audience == 'all_staff'
         || (resource.data.audience == 'assigned' && request.auth.uid in resource.data.assignedTo)));
-      allow write: if isAdmin();
+      allow write: if isOffice();
 
       match /signatures/{sid} {
-        allow read: if isAdmin() || (isActive() && resource.data.staffId == request.auth.uid);
+        allow read: if isOffice() || (isActive() && resource.data.staffId == request.auth.uid);
         allow create: if isActive()
           && request.resource.data.staffId == request.auth.uid
           && request.resource.data.signedAt == request.time
@@ -128,11 +132,16 @@ service cloud.firestore {
       }
 
       match /events/{eid} {
-        allow read: if isAdmin();
+        allow read: if isOffice();
         allow create: if isActive() && request.resource.data.actorId == request.auth.uid
                       && request.resource.data.at == request.time;
         allow update, delete: if false;
       }
+    }
+
+    // Reports read every signature at once (collection-group query); same audience as the per-document rule.
+    match /{path=**}/signatures/{sid} {
+      allow read: if isOffice();
     }
 
     // Name directory so staff can start chats (names and roles only; no contact details).
@@ -161,7 +170,7 @@ service cloud.firestore {
     // Required-training catalog: everyone signed in reads it; admins manage it.
     match /trainings/{id} {
       allow read: if isActive();
-      allow write: if isAdmin();
+      allow write: if isOffice();
     }
 
     // Audit log: written only by Cloud Functions; admins read.

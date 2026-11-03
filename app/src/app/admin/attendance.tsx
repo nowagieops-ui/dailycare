@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useShiftsBetween } from '../../lib/admin-data';
+import { useAuth } from '../../lib/auth';
 import { csvSafe } from '../../lib/csv';
 import { db } from '../../lib/firebase';
 import { distanceM } from '../../lib/geo';
 import { colors } from '../../lib/theme';
-import type { Shift } from '../../lib/types';
+import { canAdminister, type Shift } from '../../lib/types';
 import { Btn, Card, fmtTime, Muted, s, Screen, StatTile, Tag } from '../../lib/ui';
 import { addDays, startOfDay } from '../../lib/week';
 
@@ -29,6 +30,7 @@ function flagOf(x: Shift, now = Date.now()): Flag {
 export default function Attendance() {
   const [monday, setMonday] = useState(() => mondayOf(new Date()));
   const sunday = addDays(monday, 6);
+  const canEdit = canAdminister(useAuth().profile?.role);
   const rows = useShiftsBetween(monday, addDays(monday, 7)).filter((x) => x.staffId).sort((a, b) => a.start.toMillis() - b.start.toMillis());
   const flags = useMemo(() => new Map(rows.map((x) => [x.id, flagOf(x)])), [rows]);
   const total = rows.reduce((n, x) => n + hrs(x), 0);
@@ -86,7 +88,7 @@ export default function Attendance() {
                   <View style={{ flex: W[4], paddingRight: 8 }}><Text style={{ color: colors.ink }}>{hrs(x).toFixed(2)}</Text></View>
                   <View style={{ flex: W[5], paddingRight: 8 }}><Tag text={f.text} tone={f.tone} /></View>
                   <View style={{ flex: W[6] }}>
-                    {x.approved ? <Text style={{ color: colors.green, fontWeight: '600' }}>Approved</Text> : x.clockOutAt || f.review ? (
+                    {x.approved ? <Text style={{ color: colors.green, fontWeight: '600' }}>Approved</Text> : canEdit && (x.clockOutAt || f.review) ? (
                       <Pressable onPress={() => updateDoc(doc(db, 'shifts', x.id), { approved: true })}><Text style={{ color: colors.primary, fontWeight: '700' }}>{f.review ? 'Review & approve' : 'Approve'}</Text></Pressable>
                     ) : null}
                   </View>

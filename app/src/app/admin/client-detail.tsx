@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useClients, useShiftsBetween } from '../../lib/admin-data';
+import { audienceLabel, useAdminDocs } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
 import { colors } from '../../lib/theme';
 import { Btn, Card, fmtDay, fmtTime, Field, initials, Muted, s, Screen, Tag } from '../../lib/ui';
@@ -16,6 +17,7 @@ export default function ClientDetail() {
   const c = useClients().find((x) => x.id === id);
   const today = useMemo(() => startOfDay(new Date()), []);
   const shifts = useShiftsBetween(addDays(today, -90), addDays(today, 30)).filter((x) => x.clientId === id);
+  const docs = useAdminDocs().filter((d) => d.clientId === id);
   const [tab, setTab] = useState<(typeof TABS)[number]>('ISP / Care Plan');
   const [goals, setGoals] = useState('');
   const [last, setLast] = useState('');
@@ -76,7 +78,13 @@ export default function ClientDetail() {
       {tab === 'eBinder' && (
         <Card>
           <Text style={s.h2}>eBinder</Text>
-          <Muted>This client's compliance documents will be listed here once the eBinders screen is live.</Muted>
+          {docs.length === 0 && <Muted>No documents linked to this client yet. When you upload a Care Plan or Waiver document, pick this client.</Muted>}
+          {docs.map((d) => (
+            <Pressable key={d.id} onPress={() => router.push({ pathname: '/admin/document-detail', params: { id: d.id } } as never)} style={{ paddingVertical: 6 }}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>{d.title}</Text>
+              <Muted>{d.folder} · v{d.version} · {audienceLabel[d.audience]}</Muted>
+            </Pressable>
+          ))}
         </Card>
       )}
 

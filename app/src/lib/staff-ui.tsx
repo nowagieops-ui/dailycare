@@ -7,6 +7,7 @@ export const ROLE_LABEL: Record<string, string> = {
   family_staff: 'Family Staff',
   admin: 'Office Admin',
   super_admin: 'Super Admin',
+  case_manager: 'Case Manager',
 };
 
 /** Standard staff screen: mockup header (avatar, bell, settings) above a titled scroll area. */

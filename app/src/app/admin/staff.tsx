@@ -3,18 +3,20 @@ import { router } from 'expo-router';
 import { useShiftsBetween, useStaff } from '../../lib/admin-data';
 import { useCredentials } from '../../lib/credentials';
 import { daysLeft } from '../../lib/expiry';
+import { useAuth } from '../../lib/auth';
 import { colors } from '../../lib/theme';
-import type { Role } from '../../lib/types';
+import { canAdminister, type Role } from '../../lib/types';
 import { Btn, Card, fmtDay, fmtTime, initials, Muted, Screen, Tag } from '../../lib/ui';
 import { addDays, startOfDay } from '../../lib/week';
 
 export const ROLE_LABEL: Record<Role, string> = {
-  staff: 'DSP', family_staff: 'Family Staff', admin: 'Office Admin', super_admin: 'Super Admin',
+  staff: 'DSP', family_staff: 'Family Staff', admin: 'Office Admin', super_admin: 'Super Admin', case_manager: 'Case Manager',
 };
 const W = [2.2, 1.2, 1, 1.4, 1.6, 0.8];
 
 export default function StaffDirectory() {
   const staff = useStaff();
+  const canEdit = canAdminister(useAuth().profile?.role);
   const creds = useCredentials();
   const recent = useShiftsBetween(addDays(startOfDay(new Date()), -30), addDays(startOfDay(new Date()), 1));
 
@@ -33,10 +35,10 @@ export default function StaffDirectory() {
 
   return (
     <Screen title="Staff Directory">
-      <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      {canEdit && <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <View style={{ width: 200 }}><Btn label="Generate admin code" tone="ghost" onPress={() => router.push('/admin/add-staff' as never)} /></View>
         <View style={{ width: 160 }}><Btn label="+ Add Staff" onPress={() => router.push('/admin/add-staff' as never)} /></View>
-      </View>
+      </View>}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
           {head.map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}

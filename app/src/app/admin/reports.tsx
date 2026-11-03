@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useShiftsBetween, useStaff } from '../../lib/admin-data';
-import { useCredentials } from '../../lib/credentials';
+import { hasTraining, useCredentials, useRequiredTrainings } from '../../lib/credentials';
+import { FOLDERS, signingStatus, useAdminDocs, useAllSignatures } from '../../lib/ebinder';
 import { daysLeft } from '../../lib/expiry';
 import { colors } from '../../lib/theme';
 import type { Shift } from '../../lib/types';
@@ -23,6 +24,9 @@ export default function Reports() {
   const all = useShiftsBetween(from, addDays(thisMon, 7)).filter((x) => x.staffId);
   const staff = useStaff().filter((u) => (u.role === 'staff' || u.role === 'family_staff') && u.active);
   const creds = useCredentials();
+  const required = useRequiredTrainings();
+  const docs = useAdminDocs();
+  const sigs = useAllSignatures();
 
   const past = all.filter((x) => x.end.toMillis() < now);
   const staffRow = (id: string) => {
@@ -31,6 +35,8 @@ export default function Reports() {
     return {
       attendance: pct(mine.filter((x) => x.clockInAt).length, mine.length),
       credentials: pct(c.filter((k) => daysLeft(k.expiresOn.toMillis()) >= 0).length, c.length),
+      ebinder: (() => { const st = signingStatus(docs, sigs, id); return pct(st.filter((x) => x.signed).length, st.length); })(),
+      training: pct(required.filter((t) => hasTraining(creds, id, t)).length, required.length),
     };
   };
   const rows = staff.map((u) => ({ u, ...staffRow(u.id) }));
@@ -49,12 +55,12 @@ export default function Reports() {
     return { u, sh, wh, pct: pct(wh, sh) };
   });
 
-  const status = (a: number | null, c: number | null) => {
-    const v = [a, c].filter((n): n is number => n != null);
+  const status = (...all: (number | null)[]) => {
+    const v = all.filter((n): n is number => n != null);
     if (!v.length) return <Tag text="No data yet" />;
     return Math.min(...v) < 80 ? <Tag text="Needs attention" tone="red" /> : <Tag text="On track" tone="green" />;
   };
-  const W = [2.2, 1, 1, 1.4, 0.8];
+  const W = [2.2, 1, 1, 1, 1, 1.4, 0.8];
   const cell = (i: number) => ({ flex: W[i], paddingRight: 8, justifyContent: 'center' as const });
 
   return (
@@ -64,26 +70,47 @@ export default function Reports() {
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Active staff" value={staff.length} /></View>
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. attendance rate" value={show(avg(rows.map((r) => r.attendance)))} /></View>
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. on-time clock-in" value={show(avg(weeks))} /></View>
+        <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. eBinder completion" value={show(avg(rows.map((r) => r.ebinder)))} /></View>
+        <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. training completion" value={show(avg(rows.map((r) => r.training)))} /></View>
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Credentials current" value={show(avg(rows.map((r) => r.credentials)))} /></View>
       </View>
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <View style={{ padding: 12 }}><Text style={s.h2}>All staff — report summary</Text><Muted>Select a staff member to see their full profile</Muted></View>
         <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
-          {['Staff', 'Attendance', 'Credentials', 'Overall', ''].map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
+          {['Staff', 'Attendance', 'eBinder', 'Training', 'Credentials', 'Overall', ''].map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
         </View>
-        {rows.map(({ u, attendance, credentials }) => (
+        {rows.map(({ u, attendance, credentials, ebinder, training }) => (
           <View key={u.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
             <View style={[cell(0), { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
               <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.primary, fontWeight: '700', fontSize: 11 }}>{initials(u.name)}</Text></View>
               <Text style={{ fontWeight: '600', color: colors.ink }}>{u.name}</Text>
             </View>
             <View style={cell(1)}><Text>{show(attendance)}</Text></View>
-            <View style={cell(2)}><Text>{show(credentials)}</Text></View>
-            <View style={cell(3)}>{status(attendance, credentials)}</View>
-            <View style={cell(4)}><Pressable onPress={() => router.push({ pathname: '/admin/staff-detail', params: { id: u.id } } as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>View</Text></Pressable></View>
+            <View style={cell(2)}><Text>{show(ebinder)}</Text></View>
+            <View style={cell(3)}><Text>{show(training)}</Text></View>
+            <View style={cell(4)}><Text>{show(credentials)}</Text></View>
+            <View style={cell(5)}>{status(attendance, credentials, ebinder, training)}</View>
+            <View style={cell(6)}><Pressable onPress={() => router.push({ pathname: '/admin/staff-detail', params: { id: u.id } } as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>View</Text></Pressable></View>
           </View>
         ))}
+      </Card>
+
+      <Card>
+        <Text style={s.h2}>eBinder completion by folder</Text>
+        {FOLDERS.map((f) => {
+          const inFolder = docs.filter((d) => d.folder === f);
+          const parts = staff.flatMap((u) => signingStatus(inFolder, sigs, u.id));
+          const v = pct(parts.filter((x) => x.signed).length, parts.length);
+          return (
+            <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+              <Text style={{ width: 150, color: colors.ink }}>{f}</Text>
+              <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.tint }}><View style={{ width: `${v ?? 0}%` as never, height: 8, borderRadius: 4, backgroundColor: colors.primary }} /></View>
+              <Text style={{ width: 48, textAlign: 'right', color: colors.inkSoft }}>{show(v)}</Text>
+            </View>
+          );
+        })}
+        <Muted>Counts documents that need a signature. Folders with none show a dash.</Muted>
       </Card>
 
       <Card>

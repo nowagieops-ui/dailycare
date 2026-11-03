@@ -3,9 +3,10 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useShiftsBetween, useStaff } from '../../lib/admin-data';
+import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/firebase';
 import { colors } from '../../lib/theme';
-import { SERVICE_LINES, type Shift } from '../../lib/types';
+import { canAdminister, SERVICE_LINES, type Shift } from '../../lib/types';
 import { Btn, Card, Chips, fmtTime, Muted, Pill, s, Screen } from '../../lib/ui';
 import { addDays, sameDay, startOfDay } from '../../lib/week';
 
@@ -19,6 +20,7 @@ export default function Scheduling() {
   const [line, setLine] = useState<string[]>([]);
   const [sel, setSel] = useState<Shift | null>(null);
   const [busy, setBusy] = useState(false);
+  const canEdit = canAdminister(useAuth().profile?.role);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
   const all = useShiftsBetween(monday, addDays(monday, 7));
   const shifts = line.length ? all.filter((x) => x.serviceLine === line[0]) : all;
@@ -61,7 +63,7 @@ export default function Scheduling() {
         <View style={{ flex: 1, minWidth: 240 }}>
           <Chips options={SERVICE_LINES.map((l) => ({ value: l as string, label: l }))} selected={line} onToggle={(v) => setLine((c) => (c[0] === v ? [] : [v]))} />
         </View>
-        <View style={{ width: 150 }}><Btn label="+ Add Shift" onPress={() => router.push('/admin/add-shift' as never)} /></View>
+        {canEdit && <View style={{ width: 150 }}><Btn label="+ Add Shift" onPress={() => router.push('/admin/add-shift' as never)} /></View>}
       </View>
       <Muted>Tap a service line to filter; tap it again to show all.</Muted>
 
@@ -97,14 +99,14 @@ export default function Scheduling() {
         <Card>
           <Text style={s.h2}>{sel.clientName} · {sel.serviceLine}</Text>
           <Muted>{sel.start.toDate().toDateString()}, {range(sel)} · {sel.staffName || 'Open shift'}</Muted>
-          {!sel.staffId && (
+          {canEdit && !sel.staffId && (
             <>
               <Text style={{ fontWeight: '600' }}>Assign to</Text>
               <Chips options={staff.map((u) => ({ value: u.id, label: u.name }))} selected={[]}
                 onToggle={(id) => { const u = staff.find((x) => x.id === id); if (u) run(() => updateDoc(doc(db, 'shifts', sel.id), { staffId: u.id, staffName: u.name, staffPhone: u.phone ?? '' })); }} />
             </>
           )}
-          {sel.status === 'scheduled' && <Btn label="Delete shift" tone="danger" busy={busy} onPress={() => run(() => deleteDoc(doc(db, 'shifts', sel.id)))} />}
+          {canEdit && sel.status === 'scheduled' && <Btn label="Delete shift" tone="danger" busy={busy} onPress={() => run(() => deleteDoc(doc(db, 'shifts', sel.id)))} />}
           <Btn label="Close" tone="ghost" onPress={() => setSel(null)} />
         </Card>
       )}

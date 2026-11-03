@@ -28,7 +28,7 @@ service firebase.storage {
 
     // eBinder PDFs: path is ebinder/<docId>/v<version>.pdf; access follows the Firestore document's audience.
     function eDoc(id) { return firestore.get(/databases/(default)/documents/ebinderDocs/$(id)).data; }
-    function isAdminUser() { return active() && userDoc().role in ['admin', 'super_admin']; }
+    function isAdminUser() { return active() && userDoc().role in ['admin', 'super_admin', 'case_manager']; }
     match /ebinder/{docId}/{file} {
       allow read: if isAdminUser() || (active() && (eDoc(docId).audience == 'all_staff'
         || (eDoc(docId).audience == 'assigned' && request.auth.uid in eDoc(docId).assignedTo)));

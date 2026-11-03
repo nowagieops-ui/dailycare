@@ -1,6 +1,6 @@
 import type { Timestamp } from 'firebase/firestore';
 
-export type Role = 'staff' | 'family_staff' | 'admin' | 'super_admin';
+export type Role = 'staff' | 'family_staff' | 'admin' | 'super_admin' | 'case_manager';
 
 export interface UserProfile {
   uid: string;
@@ -52,7 +52,10 @@ export interface Announcement {
   authorName: string;
 }
 
-export const isAdmin = (r: Role) => r === 'admin' || r === 'super_admin';
+/** Uses the admin console (admins and case managers). */
+export const isAdmin = (r: Role) => r === 'admin' || r === 'super_admin' || r === 'case_manager';
+/** Can change schedules, accounts and settings (case managers are view-only there). */
+export const canAdminister = (r: Role | undefined) => r === 'admin' || r === 'super_admin';
 
 export const SERVICE_LINES = [
   'Residential', 'Supported Living', 'Personal Support', 'Respite',

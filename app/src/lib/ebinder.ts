@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  collection, doc, onSnapshot, orderBy, query, serverTimestamp, where, writeBatch, type Timestamp,
+  collection, collectionGroup, doc, onSnapshot, orderBy, query, serverTimestamp, where, writeBatch, type Timestamp,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -19,6 +19,7 @@ export interface EDoc {
   assignedTo: string[]; // staff uids, used when audience is 'assigned'
   requiresSignature: boolean;
   body: string; // may contain {{name}} and {{date}}; may be empty when a PDF is attached
+  clientId?: string; // care plans and waivers belong to a client
   pdfPath?: string; // Storage path of the attached PDF
   acks: string[]; // lines the signer must tick
   uploadedByName: string;
@@ -100,9 +101,24 @@ export async function signDocument(d: EDoc, who: UserProfile, typedName: string,
   await b.commit();
 }
 
-export async function attachPdf(docId: string, version: number, file: File): Promise<string> {
+export async function attachPdf(docId: string, version: number, file: Blob): Promise<string> {
   const path = `ebinder/${docId}/v${version}.pdf`;
   await uploadBytes(ref(storage, path), file, { contentType: 'application/pdf' });
   return path;
 }
 export const pdfUrl = (path: string) => getDownloadURL(ref(storage, path));
+
+/** Every signature in the agency (office roles only; used by Reports). */
+export function useAllSignatures() {
+  const [rows, setRows] = useState<Signature[]>([]);
+  useEffect(() => onSnapshot(collectionGroup(db, 'signatures'), (s) => {
+    setRows(s.docs.map((d) => ({ ...(d.data() as Signature), id: d.id, docId: d.ref.parent.parent?.id ?? '' }) as Signature & { docId: string }));
+  }, () => {}), []);
+  return rows as (Signature & { docId: string })[];
+}
+
+/** Signable documents a staff member must sign, with whether they have signed the current version. */
+export function signingStatus(docs: EDoc[], sigs: { docId: string; staffId: string; version: number }[], staffId: string) {
+  const mine = docs.filter((d) => d.requiresSignature && (d.audience === 'all_staff' || (d.audience === 'assigned' && d.assignedTo.includes(staffId))));
+  return mine.map((d) => ({ doc: d, signed: sigs.some((x) => x.docId === d.id && x.staffId === staffId && x.version === d.version) }));
+}
