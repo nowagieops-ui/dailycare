@@ -57,6 +57,8 @@ export default function Settings() {
           <Card><Text style={{ fontWeight: '600', color: colors.ink }}>Contact the office</Text><Muted>{office}</Muted></Card>
         </Pressable>
       ) : null}
+      <Pressable onPress={() => Linking.openURL('https://dailycaresupport.com/privacy-policy/')}><Card><Text style={{ fontWeight: '600', color: colors.ink }}>Privacy policy</Text></Card></Pressable>
+      <Pressable onPress={() => Linking.openURL('https://dailycaresupport.com/terms--conditions/')}><Card><Text style={{ fontWeight: '600', color: colors.ink }}>Terms & conditions</Text></Card></Pressable>
       <RowLink icon="alert-circle-outline" title="Report a missed clock-in" href="/missed" />
       <RowLink icon="calendar-outline" title="Sync shifts to my calendar" href="/calendar" />
       <RowLink icon="folder-outline" title="Shared files" href="/files" />

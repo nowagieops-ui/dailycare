@@ -15,7 +15,7 @@ setGlobalOptions({ maxInstances: 5 });
 const db = getFirestore();
 const { sendPush, adminUids } = require('./push');
 
-// TODO(owner): set to the organisation's local timezone before deploying.
+// Agency is in Pikesville, MD (Eastern time).
 const TIMEZONE = 'America/New_York';
 
 /** A staff member left their client's location during a shift -> notify every admin. */
