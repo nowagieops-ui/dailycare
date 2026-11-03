@@ -7,33 +7,33 @@ Family portal (8 screens) was removed by decision. Funding is removed from clien
 ## Staff (DSP) app — 15 screens
 | # | Mockup screen | Status | Gap |
 |---|---|---|---|
-| 1 | DSP-Login | Partial | Remember me, "New staff? Enter admin code" link, branding |
-| 2 | DSP-ForgotPassword | Missing | |
-| 3 | DSP-Onboarding (admin code) | Missing | Needs server-side code redemption |
-| 4 | DSP-Home | Partial | Header avatar/bell/settings, "Hours this week", "Tasks due today", doc-to-sign card, training card |
-| 5 | DSP-Schedule | Partial | Week strip, This week / Next week toggle, "In 20 min" status |
-| 6 | DSP-ClockIn | Partial | Live clock, "Within range" indicator, missed-clock-in link |
+| 1 | DSP-Login | Done* | *Staff ID login not built (email only) |
+| 2 | DSP-ForgotPassword | Done | |
+| 3 | DSP-Onboarding (admin code) | Done | Server-side code redemption; admin generates codes in Staff |
+| 4 | DSP-Home | Partial | Done except the "document needs your signature" card (needs Documents) and announcement→Chat link |
+| 5 | DSP-Schedule | Done | |
+| 6 | DSP-ClockIn | Done | Not yet tested on a real phone (needs device build) |
 | 7 | DSP-MissedClockIn | Done* | *wording/layout to match |
-| 8 | DSP-Tasks (visit checklist) | Partial | Progress "2 of 5", visit notes + Submit (currently on Clock In tab) |
-| 9 | DSP-Documents | Missing | Care plans (view), training, HR docs, sign-now |
+| 8 | DSP-Tasks (visit checklist) | Done* | *Visit notes live on the separate Notes tab (owner request) |
+| 9 | DSP-Documents | Partial | Training + shared files done; care plans (view) and HR docs/sign-now need the document system |
 | 10 | DSP-DocumentFill | Missing | |
 | 11 | DSP-DocumentSign (PDF preview, e-sign) | Missing | |
 | 12 | DSP-Training | Partial | Required-now, Competency / MD DDA / Agency-specific bands, credentials |
-| 13 | DSP-Notifications | Missing | Inbox |
-| 14 | DSP-Settings | Missing | Change password, push toggles, support links, log out |
+| 13 | DSP-Notifications | Done | Inbox filled by Cloud Functions |
+| 14 | DSP-Settings | Partial | Done except Contact the office, Privacy policy, Terms (need content from owner) |
 | 15 | DSP-Chat | Missing | Team chat + agency announcements |
 
 ## Admin console — 19 screens (desktop sidebar layout in mockup)
 | # | Mockup screen | Status | Gap |
 |---|---|---|---|
-| 1 | Admin-Login | Partial | Shares staff login; needs admin branding |
-| 2 | Admin-ForgotPassword | Missing | |
+| 1 | Admin-Login | Done | Web shows admin console branding |
+| 2 | Admin-ForgotPassword | Done | Same screen as staff |
 | 3 | Admin-Dashboard | Missing | KPI tiles, recent activity, quick actions |
 | 4 | Admin-Scheduling | Missing | Weekly grid, location filter, open shifts |
 | 5 | Admin-AddShift | Done+ | Plus location, phone, alternating weeks, bulk upload |
 | 6 | Admin-Staff (directory) | Partial | Table w/ status, certs, last clock-in |
 | 7 | Admin-StaffDetail | Missing | Profile/Schedule/Documents/Attendance tabs |
-| 8 | Admin-AddStaff | Partial | Start date, onboarding code generator |
+| 8 | Admin-AddStaff | Partial | Onboarding code generator done; start date, Case Manager role missing |
 | 9 | Admin-Clients | Partial | Table w/ assigned DSPs, care plan status (no Funding) |
 | 10 | Admin-ClientDetail | Missing | ISP/Care plan, eBinder, Visit history, Care team |
 | 11 | Admin-AddClient | Partial | DOB, guardian/contact |
