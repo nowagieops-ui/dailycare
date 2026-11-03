@@ -41,6 +41,7 @@ export interface Shift {
   clockOutAt?: Timestamp;
   tasks: Task[];
   note: string;
+  approved?: boolean; // timesheet approved by an admin
 }
 
 export interface Announcement {
