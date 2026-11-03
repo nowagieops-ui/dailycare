@@ -36,7 +36,7 @@ export default function Dashboard() {
   ].sort((a, b) => b.at - a.at).slice(0, 8);
 
   const quick: [string, string][] = [
-    ['+ Add staff member', '/admin/staff'], ['Generate admin onboarding code', '/admin/staff'],
+    ['+ Add staff member', '/admin/add-staff'], ['Generate admin onboarding code', '/admin/add-staff'],
     ['+ Create new shift', '/admin/scheduling'], ['Upload to eBinder', '/admin/ebinders'],
   ];
 

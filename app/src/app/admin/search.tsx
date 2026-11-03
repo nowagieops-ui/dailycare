@@ -16,7 +16,7 @@ export default function Search() {
   );
   return (
     <Screen title="Search">
-      <Card><Text style={s.h2}>Staff ({staff.length})</Text>{staff.map((u) => row(u.id, u.name, u.email, '/admin/staff'))}</Card>
+      <Card><Text style={s.h2}>Staff ({staff.length})</Text>{staff.map((u) => row(u.id, u.name, u.email, '/admin/staff-detail?id=' + u.id))}</Card>
       <Card><Text style={s.h2}>Clients ({clients.length})</Text>{clients.map((c) => row(c.id, c.name, c.serviceLines.join(', '), '/admin/clients'))}</Card>
     </Screen>
   );
