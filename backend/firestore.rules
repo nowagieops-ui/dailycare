@@ -144,6 +144,24 @@ service cloud.firestore {
       allow read: if isOffice();
     }
 
+    // PDF form templates: everyone signed in reads the field list; office roles manage.
+    match /formTemplates/{id} {
+      allow read: if isActive();
+      allow write: if isOffice();
+    }
+
+    // Completed forms. Staff create one for their own visit; the server fills in the trusted values and
+    // builds the PDF. Nobody edits or deletes a submission from the app.
+    match /formSubmissions/{id} {
+      allow read: if isOffice() || (isActive() && resource.data.staffId == request.auth.uid);
+      allow create: if isActive() && request.resource.data.staffId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['templateId', 'shiftId', 'clientId', 'staffId', 'values', 'status', 'createdAt'])
+        && request.resource.data.createdAt == request.time
+        && get(/databases/$(database)/documents/shifts/$(request.resource.data.shiftId)).data.staffId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // Name directory so staff can start chats (names and roles only; no contact details).
     match /directory/{uid} {
       allow read: if isActive();

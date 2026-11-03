@@ -8,6 +8,8 @@ const { getAuth } = require('firebase-admin/auth');
 const { newCode, validateSignup, DAYS } = require('./onboarding');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getStorage } = require('firebase-admin/storage');
+const { detectFields, fillPdf } = require('./pdfforms');
 const { daysLeft, shouldRemind, reminderText } = require('./expiry');
 
 initializeApp();
@@ -191,4 +193,68 @@ exports.syncDirectory = onDocumentWritten('users/{id}', async (e) => {
   const ref = db.collection('directory').doc(e.params.id);
   if (!b) return ref.delete();
   return ref.set({ name: b.name, role: b.role, active: b.active === true });
+});
+
+// ---- PDF forms -------------------------------------------------------------
+const OFFICE = ['admin', 'super_admin', 'case_manager'];
+async function officeUser(req) {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const me = await db.collection('users').doc(req.auth.uid).get();
+  if (!me.exists || me.data().active !== true || !OFFICE.includes(me.data().role)) throw new HttpsError('permission-denied', 'Office staff only.');
+  return me.data();
+}
+
+/** Office uploads a PDF template to Storage, then asks what is in it (fillable fields, page sizes). */
+exports.inspectTemplate = onCall({ memory: '512MiB' }, async (req) => {
+  await officeUser(req);
+  const path = String(req.data?.path || '');
+  if (!/^formTemplates\/[A-Za-z0-9]{10,40}\/template\.pdf$/.test(path)) throw new HttpsError('invalid-argument', 'Bad file path.');
+  const [bytes] = await getStorage().bucket().file(path).download();
+  try { return await detectFields(bytes); }
+  catch { throw new HttpsError('invalid-argument', 'This PDF could not be read. It may be password-protected or damaged.'); }
+});
+
+const today = (d = new Date()) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: TIMEZONE });
+
+/** A staff member submitted a form -> build the finished PDF. Trusted fields come from the server, not the app. */
+exports.renderSubmission = onDocumentCreated({ document: 'formSubmissions/{id}', memory: '512MiB' }, async (e) => {
+  const ref = e.data.ref;
+  const sub = e.data.data();
+  const fail = (why) => ref.update({ status: 'failed', error: why });
+  try {
+    const [tplSnap, userSnap, shiftSnap] = await Promise.all([
+      db.collection('formTemplates').doc(sub.templateId).get(),
+      db.collection('users').doc(sub.staffId).get(),
+      db.collection('shifts').doc(sub.shiftId).get(),
+    ]);
+    if (!tplSnap.exists || !shiftSnap.exists || !userSnap.exists) return fail('Form, visit or user not found.');
+    const tpl = tplSnap.data(), shift = shiftSnap.data(), user = userSnap.data();
+    if (shift.staffId !== sub.staffId) return fail('Not your visit.');
+
+    const trusted = {
+      staff_name: user.name, client_name: shift.clientName, service_line: shift.serviceLine,
+      visit_date: today(shift.start.toDate()), today: today(),
+    };
+    const values = {};
+    const missing = [];
+    for (const f of tpl.fields) {
+      let v = f.prefill && trusted[f.prefill] !== undefined ? trusted[f.prefill] : sub.values?.[f.key];
+      if (f.type === 'checkbox') v = v === true;
+      if (f.type === 'signature') v = typeof v === 'object' && v ? { typed: String(v.typed || ''), drawn: typeof v.drawn === 'string' ? v.drawn : undefined } : { typed: '' };
+      if (f.type === 'signature' && v.typed.trim().length < 2) v = '';
+      if (f.type === 'select' && Array.isArray(f.options) && !f.options.includes(String(v))) v = '';
+      if (f.required && (v === '' || v === undefined || v === null || (f.type === 'checkbox' && v !== true))) missing.push(f.label || f.key);
+      values[f.key] = v;
+    }
+    if (missing.length) return fail(`Missing: ${missing.slice(0, 5).join(', ')}`);
+
+    const [template] = await getStorage().bucket().file(tpl.pdfPath).download();
+    const out = await fillPdf(template, tpl, values, { signedBy: user.name, signedAt: today(), submissionId: ref.id });
+    const outPath = `submissions/${ref.id}.pdf`;
+    await getStorage().bucket().file(outPath).save(Buffer.from(out), { contentType: 'application/pdf', resumable: false });
+    await ref.update({ status: 'ready', pdfPath: outPath, renderedAt: Timestamp.now(), values });
+  } catch (err) {
+    console.error('renderSubmission failed', e.params.id, err?.message);
+    await fail('Could not build the PDF.');
+  }
 });

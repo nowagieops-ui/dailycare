@@ -37,6 +37,19 @@ service firebase.storage {
       allow delete: if isAdminUser();
     }
 
+    // PDF form templates: office uploads; only office reads (staff get the field list from Firestore).
+    match /formTemplates/{tplId}/{file} {
+      allow read, delete: if isAdminUser();
+      allow create, update: if isAdminUser() && request.resource.size > 0 && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+
+    // Finished form PDFs are written only by the server; the submitter and office roles read them.
+    match /submissions/{file} {
+      allow read: if active() && (isAdminUser()
+        || firestore.get(/databases/(default)/documents/formSubmissions/$(file.split('\\.')[0])).data.staffId == request.auth.uid);
+    }
+
     match /{allPaths=**} { allow read, write: if false; }
   }
 }

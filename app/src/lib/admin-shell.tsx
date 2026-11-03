@@ -18,6 +18,7 @@ const MAIN: Item[] = [
   { href: '/admin/staff', label: 'Staff', icon: 'people-outline' },
   { href: '/admin/clients', label: 'Clients', icon: 'business-outline' },
   { href: '/admin/ebinders', label: 'eBinders', icon: 'folder-open-outline' },
+  { href: '/admin/forms', label: 'PDF Forms', icon: 'create-outline' },
   { href: '/admin/training', label: 'Training & Credentials', icon: 'ribbon-outline' },
   { href: '/admin/attendance', label: 'Attendance', icon: 'time-outline' },
   { href: '/admin/reports', label: 'Reports', icon: 'bar-chart-outline' },
@@ -32,7 +33,7 @@ const MORE: Item[] = [
 ];
 
 const TITLES: Record<string, string> = {
-  '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'Staff detail','/admin/audit': 'Audit log',
+  '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/form-edit': 'PDF Form', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'Staff detail','/admin/audit': 'Audit log',
   '/admin/add-staff': 'Add staff member', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
 };
 const isActive = (path: string, href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(href + '/'));

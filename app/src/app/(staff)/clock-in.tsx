@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import { useAuth } from '../../lib/auth';
 import { distanceM, isWithinSite } from '../../lib/geo';
 import { requestLocationPermissions, startShiftGeofence, stopShiftGeofence } from '../../lib/geofence';
+import { formsBlocker, formsForShift, useShiftSubmissions, useTemplates } from '../../lib/forms';
 import { clockIn, clockOut, clockOutBlocker, isShiftTime, pickCurrent, useMyShifts } from '../../lib/shifts';
 import { StaffScreen } from '../../lib/staff-ui';
 import { colors } from '../../lib/theme';
@@ -16,6 +17,8 @@ export default function ClockIn() {
   const { profile } = useAuth();
   const { shifts } = useMyShifts(profile?.uid);
   const shift = pickCurrent(shifts);
+  const templates = useTemplates();
+  const subs = useShiftSubmissions(shift?.id, profile?.uid);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [range, setRange] = useState<Range>({ state: 'idle' });
@@ -79,7 +82,7 @@ export default function ClockIn() {
     try { await clockOut(shift); await stopShiftGeofence().catch(() => {}); } finally { setBusy(false); }
   }
 
-  const blocker = clockOutBlocker(shift);
+  const blocker = clockOutBlocker(shift) ?? formsBlocker(formsForShift(templates, shift), subs);
   const rangeText =
     range.state === 'within' ? 'Within range' : range.state === 'outside' ? `${range.metres} m from the client` :
     range.state === 'denied' ? 'Location is off' : 'Checking your location…';
