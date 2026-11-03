@@ -10,41 +10,41 @@ Family portal (8 screens) was removed by decision. Funding is removed from clien
 | 1 | DSP-Login | Done* | *Staff ID login not built (email only) |
 | 2 | DSP-ForgotPassword | Done | |
 | 3 | DSP-Onboarding (admin code) | Done | Server-side code redemption; admin generates codes in Staff |
-| 4 | DSP-Home | Partial | Done except the "document needs your signature" card (needs Documents) and announcement→Chat link |
+| 4 | DSP-Home | Done | Signature card and announcement link added |
 | 5 | DSP-Schedule | Done | |
 | 6 | DSP-ClockIn | Done | Not yet tested on a real phone (needs device build) |
 | 7 | DSP-MissedClockIn | Done* | *wording/layout to match |
 | 8 | DSP-Tasks (visit checklist) | Done* | *Visit notes live on the separate Notes tab (owner request) |
-| 9 | DSP-Documents | Partial | Training + shared files done; care plans (view) and HR docs/sign-now need the document system |
-| 10 | DSP-DocumentFill | Missing | |
-| 11 | DSP-DocumentSign (PDF preview, e-sign) | Missing | |
-| 12 | DSP-Training | Partial | Required-now, Competency / MD DDA / Agency-specific bands, credentials |
+| 9 | DSP-Documents | Done | Care plans (view only), credentials, HR docs with Review & Sign |
+| 10 | DSP-DocumentFill | Done | Typed documents; admin writes the text |
+| 11 | DSP-DocumentSign (PDF preview, e-sign) | Done* | *Typed-name e-signature with server timestamp; no real PDF yet (needs Storage); no IP capture |
+| 12 | DSP-Training | Done* | *No "Start training" content; the office records completion |
 | 13 | DSP-Notifications | Done | Inbox filled by Cloud Functions |
-| 14 | DSP-Settings | Partial | Done except Contact the office, Privacy policy, Terms (need content from owner) |
-| 15 | DSP-Chat | Missing | Team chat + agency announcements |
+| 14 | DSP-Settings | Partial | Contact the office done (uses agency phone). Privacy policy and Terms need content from owner |
+| 15 | DSP-Chat | Done | Direct and group chats, announcements; push has no message text |
 
 ## Admin console — 19 screens (desktop sidebar layout in mockup)
 | # | Mockup screen | Status | Gap |
 |---|---|---|---|
 | 1 | Admin-Login | Done | Web shows admin console branding |
 | 2 | Admin-ForgotPassword | Done | Same screen as staff |
-| 3 | Admin-Dashboard | Missing | KPI tiles, recent activity, quick actions |
-| 4 | Admin-Scheduling | Missing | Weekly grid, location filter, open shifts |
+| 3 | Admin-Dashboard | Done | |
+| 4 | Admin-Scheduling | Done* | *Filter is by service line (no separate locations yet) |
 | 5 | Admin-AddShift | Done+ | Plus location, phone, alternating weeks, bulk upload |
-| 6 | Admin-Staff (directory) | Partial | Table w/ status, certs, last clock-in |
-| 7 | Admin-StaffDetail | Missing | Profile/Schedule/Documents/Attendance tabs |
-| 8 | Admin-AddStaff | Partial | Onboarding code generator done; start date, Case Manager role missing |
-| 9 | Admin-Clients | Partial | Table w/ assigned DSPs, care plan status (no Funding) |
-| 10 | Admin-ClientDetail | Missing | ISP/Care plan, eBinder, Visit history, Care team |
-| 11 | Admin-AddClient | Partial | DOB, guardian/contact |
-| 12 | Admin-Compliance (eBinders) | Missing | Folders, versions, status, visibility |
-| 13 | Admin-DocumentDetail | Missing | Signature status, audit trail |
-| 14 | Admin-Training | Partial | Agency-wide training, completion bands, test library |
-| 15 | Admin-Attendance | Missing | Timesheet table, approve/review, export |
-| 16 | Admin-Reports | Missing | |
-| 17 | Admin-Notifications | Missing | Inbox |
-| 18 | Admin-AuditLog | Missing | |
-| 19 | Admin-Settings | Missing | Agency profile, prefs, roles, lookup tables |
+| 6 | Admin-Staff (directory) | Done | |
+| 7 | Admin-StaffDetail | Done* | *Documents tab lists document-type credentials only |
+| 8 | Admin-AddStaff | Partial | Start date done; Case Manager role not built |
+| 9 | Admin-Clients | Done | |
+| 10 | Admin-ClientDetail | Partial | eBinder tab is a placeholder (docs are not linked to clients yet) |
+| 11 | Admin-AddClient | Done | |
+| 12 | Admin-Compliance (eBinders) | Done* | *Typed documents; PDF upload needs Storage |
+| 13 | Admin-DocumentDetail | Done | |
+| 14 | Admin-Training | Done* | *Test library (iManage integration) not built |
+| 15 | Admin-Attendance | Done | CSV export instead of payroll integration |
+| 16 | Admin-Reports | Partial | Attendance, on-time, utilization, credentials; no eBinder-by-folder or training % yet |
+| 17 | Admin-Notifications | Done | |
+| 18 | Admin-AuditLog | Done* | *Server-written; records what happened, not which admin did it |
+| 19 | Admin-Settings | Partial | Agency profile, own prefs, roles table, service lines; lookup tables are fixed, not editable |
 
 ## Extra requirements from the owner (not in mockup)
 Daily Notes tab; complete tasks+notes before clock-out; bulk shift upload; shift location + staff phone;

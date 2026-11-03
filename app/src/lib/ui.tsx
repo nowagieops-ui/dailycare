@@ -208,6 +208,9 @@ export function StaffHeader({ name, roleLabel }: { name: string; roleLabel: stri
         </View>
       </View>
       <View style={{ flexDirection: 'row', gap: 4 }}>
+        <Pressable accessibilityLabel="Open team chat" onPress={() => router.push('/chat' as never)} style={{ padding: 8 }}>
+          <Ionicons name="chatbubbles-outline" size={22} color={colors.primary} />
+        </Pressable>
         <Pressable accessibilityLabel="Open notifications" onPress={() => router.push('/notifications' as never)} style={{ padding: 8 }}>
           <Ionicons name="notifications-outline" size={22} color={colors.primary} />
         </Pressable>

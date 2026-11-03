@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { db } from './firebase';
 import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +24,7 @@ const MAIN: Item[] = [
   { href: '/admin/settings', label: 'Settings', icon: 'settings-outline' },
 ];
 const MORE: Item[] = [
+  { href: '/admin/chat', label: 'Team Chat', icon: 'chatbubbles-outline' },
   { href: '/admin/announcements', label: 'Announcements', icon: 'megaphone-outline' },
   { href: '/admin/requests', label: 'Missed clock-ins', icon: 'alert-circle-outline' },
   { href: '/admin/records', label: 'Visit records', icon: 'document-text-outline' },
@@ -29,7 +32,7 @@ const MORE: Item[] = [
 ];
 
 const TITLES: Record<string, string> = {
-  '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'Staff detail','/admin/audit': 'Audit log',
+  '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'Staff detail','/admin/audit': 'Audit log',
   '/admin/add-staff': 'Add staff member', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
 };
 const isActive = (path: string, href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(href + '/'));
@@ -88,6 +91,21 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { profile } = useAuth();
   const [q, setQ] = useState('');
+
+  // One-time catch-up: accounts created before the chat directory existed get re-saved unchanged,
+  // which makes the server trigger add them. Admins may only touch staff accounts; super admins touch all.
+  useEffect(() => {
+    if (!profile) return;
+    (async () => {
+      const [dir, users] = await Promise.all([getDocs(collection(db, 'directory')), getDocs(collection(db, 'users'))]);
+      const have = new Set(dir.docs.map((d) => d.id));
+      for (const u of users.docs) {
+        const role = u.data().role;
+        const allowed = profile.role === 'super_admin' || role === 'staff' || role === 'family_staff';
+        if (!have.has(u.id) && allowed) await updateDoc(doc(db, 'users', u.id), { active: u.data().active });
+      }
+    })().catch(() => {});
+  }, [profile?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const topbar = (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.paper, borderBottomWidth: 1, borderBottomColor: colors.line }}>

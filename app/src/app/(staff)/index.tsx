@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../lib/auth';
+import { useSignedIds, useStaffDocs } from '../../lib/ebinder';
 import { useCredentials } from '../../lib/credentials';
 import { daysLeft } from '../../lib/expiry';
 import { pickCurrent, useAnnouncements, useMyShifts } from '../../lib/shifts';
@@ -14,6 +15,9 @@ export default function Home() {
   const { shifts } = useMyShifts(profile?.uid, 24 * 8);
   const announcements = useAnnouncements();
   const creds = useCredentials(profile?.uid);
+  const docs = useStaffDocs(profile?.uid);
+  const signed = useSignedIds(docs, profile?.uid);
+  const needSign = docs.filter((d) => d.requiresSignature && !signed[d.id]);
   const now = new Date();
   const next = pickCurrent(shifts);
   const isToday = next ? sameDay(new Date(next.start.toMillis()), now) : false;
@@ -54,7 +58,17 @@ export default function Home() {
         <StatTile label="Tasks due today" value={tasksDue} />
       </View>
 
+      {needSign.length > 0 && (
+        <Pressable onPress={() => router.push('/documents')}>
+          <Card style={{ backgroundColor: colors.amberBg, borderColor: colors.amber }}>
+            <Text style={{ fontWeight: '700', color: colors.ink }}>{needSign.length === 1 ? '1 document needs your signature' : `${needSign.length} documents need your signature`}</Text>
+            <Muted>{needSign[0].title} — tap to review and sign</Muted>
+          </Card>
+        </Pressable>
+      )}
+
       {latest && (
+        <Pressable onPress={() => router.push('/announcements' as never)}>
         <Card>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Eyebrow>Agency announcement</Eyebrow>
@@ -63,6 +77,7 @@ export default function Home() {
           <Text style={{ fontWeight: '700' }}>{latest.title}</Text>
           <Text style={{ fontSize: 14, color: colors.ink }}>{latest.body}</Text>
         </Card>
+        </Pressable>
       )}
 
       <RowLink

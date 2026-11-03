@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Switch, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Pressable, Switch, Text, View } from 'react-native';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { router } from 'expo-router';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '../../lib/auth';
-import { auth } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import { usePrefs } from '../../lib/prefs';
 import { ROLE_LABEL, StaffScreen } from '../../lib/staff-ui';
 import { colors } from '../../lib/theme';
@@ -19,6 +20,8 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
 }
 
 export default function Settings() {
+  const [office, setOffice] = useState('');
+  useEffect(() => onSnapshot(doc(db, 'settings', 'agency'), (d) => setOffice(d.data()?.phone ?? ''), () => {}), []);
   const { profile, signOutUser } = useAuth();
   const { prefs, set } = usePrefs(profile?.uid);
   const [msg, setMsg] = useState('');
@@ -49,6 +52,11 @@ export default function Settings() {
       </Card>
 
       <Eyebrow>Support</Eyebrow>
+      {office ? (
+        <Pressable onPress={() => Linking.openURL(`tel:${office.replace(/[^0-9+]/g, '')}`)}>
+          <Card><Text style={{ fontWeight: '600', color: colors.ink }}>Contact the office</Text><Muted>{office}</Muted></Card>
+        </Pressable>
+      ) : null}
       <RowLink icon="alert-circle-outline" title="Report a missed clock-in" href="/missed" />
       <RowLink icon="calendar-outline" title="Sync shifts to my calendar" href="/calendar" />
       <RowLink icon="folder-outline" title="Shared files" href="/files" />

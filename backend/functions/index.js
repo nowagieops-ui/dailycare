@@ -175,3 +175,20 @@ exports.auditCredentials = onDocumentWritten('credentials/{id}', async (e) => {
   if (!a && b) return audit('credential.added', `${b.title} added for ${b.staffName}`);
   if (a && !b) return audit('credential.removed', `${a.title} removed for ${a.staffName}`);
 });
+
+/** New chat message -> push the other members. The text carries no message content (no PHI). */
+exports.onChatMessage = onDocumentCreated('chats/{id}/messages/{mid}', async (e) => {
+  const m = e.data?.data();
+  if (!m) return;
+  const chat = (await db.collection('chats').doc(e.params.id).get()).data();
+  const others = (chat?.members || []).filter((u) => u !== m.senderId);
+  if (others.length) await sendPush(db, others, 'New message', 'You have a new team chat message.');
+});
+
+/** Keep the names-only directory (used to start chats) in step with accounts. */
+exports.syncDirectory = onDocumentWritten('users/{id}', async (e) => {
+  const b = e.data?.after?.data();
+  const ref = db.collection('directory').doc(e.params.id);
+  if (!b) return ref.delete();
+  return ref.set({ name: b.name, role: b.role, active: b.active === true });
+});
