@@ -93,8 +93,15 @@ export interface Credential {
   staffName: string;
   title: string;
   kind: CredentialKind;
+  band?: TrainingBand;
   expiresOn: Timestamp;
 }
+
+export const BANDS = ['Competency', 'MD DDA', 'Agency Specific'] as const;
+export type TrainingBand = (typeof BANDS)[number];
+
+/** A training every active staff member must hold (completion = a non-expired credential with the same title). */
+export interface RequiredTraining { id: string; title: string; band: TrainingBand }
 
 export interface MissedClockIn {
   id: string;

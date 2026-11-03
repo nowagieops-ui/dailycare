@@ -1,7 +1,7 @@
 import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
-import type { Credential, MissedClockIn } from './types';
+import type { Credential, MissedClockIn, RequiredTraining } from './types';
 import { colors } from './theme';
 import { stageOf, type Stage } from './expiry';
 
@@ -34,3 +34,14 @@ export function useMissedRequests(opts: { staffId?: string; pendingOnly?: boolea
 export const stageTone = (st: Stage): 'green' | 'amber' | 'red' | 'blue' =>
   st === 'ok' ? 'green' : st === 'expired' || st === 'week' ? 'red' : st === 'month' ? 'amber' : 'blue';
 export { stageOf, colors };
+
+export function useRequiredTrainings() {
+  const [rows, setRows] = useState<RequiredTraining[]>([]);
+  useEffect(() => onSnapshot(query(collection(db, 'trainings')),
+    (s) => setRows(s.docs.map((d) => ({ ...d.data(), id: d.id }) as RequiredTraining)), () => {}), []);
+  return rows;
+}
+
+/** Does this staff member hold a current credential for the required training? */
+export const hasTraining = (creds: Credential[], staffId: string, t: RequiredTraining, now = Date.now()) =>
+  creds.some((c) => c.staffId === staffId && c.title.trim().toLowerCase() === t.title.trim().toLowerCase() && c.expiresOn.toMillis() >= now);

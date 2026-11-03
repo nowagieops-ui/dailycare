@@ -108,6 +108,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Required-training catalog: everyone signed in reads it; admins manage it.
+    match /trainings/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
     // Audit log: written only by Cloud Functions; admins read.
     match /auditLog/{id} {
       allow read: if isAdmin();
