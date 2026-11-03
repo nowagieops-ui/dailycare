@@ -1,208 +1,113 @@
-import { useState } from 'react';
-import { Platform, Text } from 'react-native';
-import { collection, doc, writeBatch, Timestamp } from 'firebase/firestore';
-import { useClients, useStaff } from '../../lib/admin-data';
-import { parseCsv, SHIFT_TEMPLATE, SHIFT_TEMPLATE_HEADERS } from '../../lib/csv';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { useShiftsBetween, useStaff } from '../../lib/admin-data';
 import { db } from '../../lib/firebase';
-import { generateDates, parseLocalDate, shiftWindow, type Pattern, type WeekCycle } from '../../lib/recurrence';
-import type { Client, UserProfile } from '../../lib/types';
-import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
+import { colors } from '../../lib/theme';
+import { SERVICE_LINES, type Shift } from '../../lib/types';
+import { Btn, Card, Chips, fmtTime, Muted, Pill, s, Screen } from '../../lib/ui';
+import { addDays, sameDay, startOfDay } from '../../lib/week';
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MAX_BATCH = 450; // Firestore batches cap at 500 writes
+const mondayOf = (d: Date) => addDays(startOfDay(d), -((d.getDay() + 6) % 7));
+const short = (ms: number) => fmtTime(ms).replace(':00', '').replace(' ', '');
+const range = (x: Shift) => `${short(x.start.toMillis())}–${short(x.end.toMillis())}`;
+const COL = 120;
 
-type Row = { staff: UserProfile & { id: string }; client: Client; start: Date; end: Date; tasks: string[]; phone?: string; address?: string; radius?: number };
-
-async function saveShifts(rows: Row[]) {
-  for (let i = 0; i < rows.length; i += MAX_BATCH) {
-    const batch = writeBatch(db);
-    for (const r of rows.slice(i, i + MAX_BATCH)) {
-      batch.set(doc(collection(db, 'shifts')), {
-        staffId: r.staff.id,
-        staffName: r.staff.name,
-        staffPhone: r.phone ?? r.staff.phone ?? '',
-        clientId: r.client.id,
-        clientName: r.client.name,
-        serviceLine: r.client.serviceLines[0] ?? '',
-        address: r.address ?? r.client.address,
-        lat: r.client.lat,
-        lng: r.client.lng,
-        radiusM: r.radius ?? r.client.radiusM,
-        start: Timestamp.fromDate(r.start),
-        end: Timestamp.fromDate(r.end),
-        status: 'scheduled',
-        tasks: r.tasks.map((label, n) => ({ id: `t${n}`, label, done: false })),
-        note: '',
-      });
-    }
-    await batch.commit();
-  }
-}
-
-export default function Shifts() {
-  const clients = useClients();
-  const allStaff = useStaff();
-  const staff = allStaff.filter((u) => u.role === 'staff' || u.role === 'family_staff');
-
-  const [staffId, setStaffId] = useState<string[]>([]);
-  const [clientId, setClientId] = useState<string[]>([]);
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [radius, setRadius] = useState('');
-  const [date, setDate] = useState('');
-  const [startT, setStartT] = useState('09:00');
-  const [endT, setEndT] = useState('17:00');
-  const [pattern, setPattern] = useState<Pattern>('once');
-  const [cycle, setCycle] = useState<WeekCycle>('odd');
-  const [days, setDays] = useState<number[]>([]);
-  const [weeks, setWeeks] = useState('4');
-  const [msg, setMsg] = useState('');
+export default function Scheduling() {
+  const [monday, setMonday] = useState(() => mondayOf(new Date()));
+  const [line, setLine] = useState<string[]>([]);
+  const [sel, setSel] = useState<Shift | null>(null);
   const [busy, setBusy] = useState(false);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
+  const all = useShiftsBetween(monday, addDays(monday, 7));
+  const shifts = line.length ? all.filter((x) => x.serviceLine === line[0]) : all;
+  const staff = useStaff().filter((u) => (u.role === 'staff' || u.role === 'family_staff') && u.active);
+  const todayStart = startOfDay(new Date());
 
-  const staffPick = staff.find((u) => u.id === staffId[0]);
-  const clientPick = clients.find((c) => c.id === clientId[0]);
+  const label = `Week of ${monday.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${addDays(monday, 6).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const cell = (staffId: string, d: Date) => shifts.filter((x) => x.staffId === staffId && sameDay(x.start.toDate(), d));
 
-  function pickStaff(id: string) {
-    setStaffId([id]);
-    setPhone(staff.find((u) => u.id === id)?.phone ?? ''); // phone prefilled, still editable
-  }
-  function pickClient(id: string) {
-    const c = clients.find((x) => x.id === id);
-    setClientId([id]);
-    setAddress(c?.address ?? '');
-    setRadius(String(c?.radiusM ?? ''));
-  }
+  const chip = (x: Shift) => {
+    const open = !x.staffId;
+    return (
+      <Pressable key={x.id} onPress={() => setSel(x)} accessibilityRole="button"
+        style={{ borderRadius: 8, padding: 6, backgroundColor: open ? colors.amberBg : colors.tint, borderWidth: sel?.id === x.id ? 2 : 0, borderColor: colors.primary }}>
+        <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '700', color: open ? colors.amber : colors.primary }}>{open ? 'Open' : x.clientName}</Text>
+        <Text numberOfLines={1} style={{ fontSize: 11, color: colors.inkSoft }}>{open ? `${x.clientName} · ` : ''}{range(x)}</Text>
+      </Pressable>
+    );
+  };
 
-  const dates = parseLocalDate(date)
-    ? generateDates({ startDate: date, pattern, weeks: Number(weeks) || 1, daysOfWeek: days.length ? days : undefined, cycle })
-    : [];
-  const window0 = dates[0] ? shiftWindow(dates[0], startT, endT) : null;
-  const ok = staffPick && clientPick && window0 && dates.length > 0;
-
-  async function create() {
-    if (!staffPick || !clientPick) return;
+  async function run(fn: () => Promise<unknown>) {
     setBusy(true);
-    try {
-      const rows: Row[] = [];
-      for (const d of dates) {
-        const w = shiftWindow(d, startT, endT);
-        if (w) rows.push({
-          staff: staffPick, client: clientPick, ...w, tasks: clientPick.defaultTasks,
-          phone: phone.trim(), address: address.trim(), radius: Number(radius) || clientPick.radiusM,
-        });
-      }
-      await saveShifts(rows);
-      setMsg(`Created ${rows.length} shift${rows.length === 1 ? '' : 's'}.`);
-    } catch {
-      setMsg('Could not create shifts.');
-    } finally { setBusy(false); }
+    try { await fn(); setSel(null); } finally { setBusy(false); }
   }
 
-  function downloadTemplate() {
-    const url = URL.createObjectURL(new Blob([SHIFT_TEMPLATE], { type: 'text/csv' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = 'shift-template.csv'; a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function pickCsv() {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.csv,text/csv';
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      if (file.size > 1_000_000) return setMsg('File too large (max 1 MB).');
-      const rows = parseCsv(await file.text());
-      const [head, ...body] = rows;
-      if (!head || SHIFT_TEMPLATE_HEADERS.some((h, i) => head[i]?.trim().toLowerCase() !== h)) {
-        return setMsg(`First row must be: ${SHIFT_TEMPLATE_HEADERS.join(',')}`);
-      }
-      const good: Row[] = [];
-      const errors: string[] = [];
-      body.forEach((r, i) => {
-        const line = i + 2;
-        const st = staff.find((u) => u.email === r[0]?.trim().toLowerCase());
-        const cl = clients.find((c) => c.name.toLowerCase() === r[1]?.trim().toLowerCase());
-        const d = parseLocalDate(r[2] ?? '');
-        const w = d ? shiftWindow(d, r[3] ?? '', r[4] ?? '') : null;
-        if (!st) errors.push(`Line ${line}: no staff with email "${r[0]}"`);
-        else if (!cl) errors.push(`Line ${line}: no client named "${r[1]}"`);
-        else if (!w) errors.push(`Line ${line}: bad date or time`);
-        else good.push({
-          staff: st, client: cl, ...w,
-          tasks: r[5]?.trim() ? r[5].split(';').map((t) => t.trim()).filter(Boolean) : cl.defaultTasks,
-        });
-      });
-      // All-or-nothing: a partly imported schedule is worse than none.
-      if (errors.length) return setMsg(`Nothing imported.\n${errors.slice(0, 8).join('\n')}`);
-      if (!good.length) return setMsg('No rows found.');
-      setBusy(true);
-      try { await saveShifts(good); setMsg(`Imported ${good.length} shifts.`); }
-      catch { setMsg('Import failed.'); }
-      finally { setBusy(false); }
-    };
-    input.click();
-  }
+  const row = (key: string, name: string, staffId: string) => (
+    <View key={key} style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.line }}>
+      <View style={{ width: 130, padding: 10, justifyContent: 'center' }}><Text style={{ fontWeight: '600', color: colors.ink }}>{name}</Text></View>
+      {days.map((d) => (
+        <View key={d.toISOString()} style={{ width: COL, padding: 4, gap: 4, backgroundColor: sameDay(d, todayStart) ? '#F7F8FE' : undefined }}>
+          {cell(staffId, d).map(chip)}
+        </View>
+      ))}
+    </View>
+  );
 
   return (
-    <Screen title="Shifts">
-      <Card>
-        <Text style={s.h2}>New shift</Text>
-        <Text style={{ fontWeight: '600' }}>Staff</Text>
-        <Chips options={staff.map((u) => ({ value: u.id, label: u.name }))} selected={staffId} onToggle={pickStaff} />
-        <Field label="Staff phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <Text style={{ fontWeight: '600' }}>Client</Text>
-        <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={pickClient} />
-        <Field label="Shift location (address)" value={address} onChangeText={setAddress} />
-        <Field label="Allowed radius (metres)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
-        <Field label="Start date (YYYY-MM-DD)" value={date} onChangeText={setDate} placeholder="2026-11-02" />
-        <Field label="Start time (24h)" value={startT} onChangeText={setStartT} />
-        <Field label="End time (24h)" value={endT} onChangeText={setEndT} />
+    <Screen title="Scheduling">
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 240 }}>
+          <Chips options={SERVICE_LINES.map((l) => ({ value: l as string, label: l }))} selected={line} onToggle={(v) => setLine((c) => (c[0] === v ? [] : [v]))} />
+        </View>
+        <View style={{ width: 150 }}><Btn label="+ Add Shift" onPress={() => router.push('/admin/add-shift' as never)} /></View>
+      </View>
+      <Muted>Tap a service line to filter; tap it again to show all.</Muted>
 
-        <Text style={{ fontWeight: '600' }}>Repeat</Text>
-        <Chips<Pattern>
-          options={[
-            { value: 'once', label: 'One-time' }, { value: 'weekly', label: 'Weekly' },
-            { value: 'weekdays', label: 'Every weekday' }, { value: 'alternating', label: 'Alternating weeks' },
-          ]}
-          selected={[pattern]} onToggle={setPattern}
-        />
-        {(pattern === 'weekly' || pattern === 'alternating') && (
-          <>
-            <Text style={{ fontWeight: '600' }}>Days</Text>
-            <Chips options={DAYS.map((d, i) => ({ value: i, label: d }))} selected={days}
-              onToggle={(v) => setDays((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v]))} />
-          </>
-        )}
-        {pattern === 'alternating' && (
-          <>
-            <Text style={{ fontWeight: '600' }}>This staff member works</Text>
-            <Chips<WeekCycle>
-              options={[{ value: 'odd', label: 'Weeks 1, 3, 5…' }, { value: 'even', label: 'Weeks 2, 4, 6…' }]}
-              selected={[cycle]} onToggle={setCycle}
-            />
-            <Muted>Week 1 is the week of the start date. Create the partner's shifts with the other option.</Muted>
-          </>
-        )}
-        {pattern !== 'once' && <Field label="Number of weeks (max 52)" value={weeks} onChangeText={setWeeks} keyboardType="number-pad" />}
-
-        {ok && <Muted>{dates.length} shift{dates.length === 1 ? '' : 's'}, first on {dates[0].toDateString()}, last on {dates[dates.length - 1].toDateString()}.</Muted>}
-        <Btn label={`Create ${dates.length || ''} shift${dates.length === 1 ? '' : 's'}`} onPress={create} busy={busy} disabled={!ok} />
+      <Card style={{ padding: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, flexWrap: 'wrap', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable accessibilityLabel="Previous week" onPress={() => setMonday(addDays(monday, -7))} style={{ padding: 6 }}><Text style={{ fontSize: 18, color: colors.primary }}>‹</Text></Pressable>
+            <Text style={s.h2}>{label}</Text>
+            <Pressable accessibilityLabel="Next week" onPress={() => setMonday(addDays(monday, 7))} style={{ padding: 6 }}><Text style={{ fontSize: 18, color: colors.primary }}>›</Text></Pressable>
+            <Pressable onPress={() => setMonday(mondayOf(new Date()))}><Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>Today</Text></Pressable>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}><Pill text="● Scheduled" tone="blue" /><Pill text="● Open shift" tone="amber" /></View>
+        </View>
+        <ScrollView horizontal>
+          <View>
+            <View style={{ flexDirection: 'row', backgroundColor: colors.bg }}>
+              <View style={{ width: 130, padding: 10 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>Staff</Text></View>
+              {days.map((d) => (
+                <View key={d.toISOString()} style={{ width: COL, padding: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: sameDay(d, todayStart) ? colors.primary : colors.inkSoft }}>
+                    {d.toLocaleDateString([], { weekday: 'short' })} {d.getDate()}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {row('open', 'Open shifts', '')}
+            {staff.map((u) => row(u.id, u.name, u.id))}
+          </View>
+        </ScrollView>
       </Card>
 
-      <Card>
-        <Text style={s.h2}>Bulk upload</Text>
-        {Platform.OS === 'web' ? (
-          <>
-            <Muted>Download the template, fill in one row per shift, then upload it. If any row has a problem, nothing is imported.</Muted>
-            <Btn label="Download template (CSV)" tone="ghost" onPress={downloadTemplate} />
-            <Btn label="Upload CSV" onPress={pickCsv} busy={busy} />
-          </>
-        ) : (
-          <Muted>Bulk upload is available in the web admin dashboard.</Muted>
-        )}
-      </Card>
-      {msg ? <Text style={{ color: msg.startsWith('Created') || msg.startsWith('Imported') ? '#3F8F5F' : '#C1554B' }}>{msg}</Text> : null}
+      {sel && (
+        <Card>
+          <Text style={s.h2}>{sel.clientName} · {sel.serviceLine}</Text>
+          <Muted>{sel.start.toDate().toDateString()}, {range(sel)} · {sel.staffName || 'Open shift'}</Muted>
+          {!sel.staffId && (
+            <>
+              <Text style={{ fontWeight: '600' }}>Assign to</Text>
+              <Chips options={staff.map((u) => ({ value: u.id, label: u.name }))} selected={[]}
+                onToggle={(id) => { const u = staff.find((x) => x.id === id); if (u) run(() => updateDoc(doc(db, 'shifts', sel.id), { staffId: u.id, staffName: u.name, staffPhone: u.phone ?? '' })); }} />
+            </>
+          )}
+          {sel.status === 'scheduled' && <Btn label="Delete shift" tone="danger" busy={busy} onPress={() => run(() => deleteDoc(doc(db, 'shifts', sel.id)))} />}
+          <Btn label="Close" tone="ghost" onPress={() => setSel(null)} />
+        </Card>
+      )}
     </Screen>
   );
 }
