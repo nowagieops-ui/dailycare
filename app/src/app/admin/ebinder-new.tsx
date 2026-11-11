@@ -6,16 +6,17 @@ import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from 'fir
 import { useClients, useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { attachPdf, Audience, audienceLabel, FOLDERS, logEvent, type EDoc, type Folder } from '../../lib/ebinder';
+import { mirrorEbinderDoc } from '../../lib/drive';
 import { db } from '../../lib/firebase';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
 /** New document, or (with ?id=) a new version of an existing one. */
 export default function EBinderNew() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, clientId: presetClient } = useLocalSearchParams<{ id?: string; clientId?: string }>();
   const { profile } = useAuth();
   const staff = useStaff().filter((u) => (u.role === 'staff' || u.role === 'family_staff') && u.active);
   const clients = useClients();
-  const [clientId, setClientId] = useState<string[]>([]);
+  const [clientId, setClientId] = useState<string[]>(presetClient ? [String(presetClient)] : []);
   const [title, setTitle] = useState('');
   const [folder, setFolder] = useState<Folder[]>(['HR & Personnel']);
   const [audience, setAudience] = useState<Audience[]>(['all_staff']);
@@ -68,12 +69,15 @@ export default function EBinderNew() {
         title: title.trim(), folder: folder[0], clientId: clientId[0] ?? '', audience: audience[0], assignedTo: audience[0] === 'assigned' ? assigned : [],
         requiresSignature: sign[0] === 'yes' && audience[0] !== 'admin', body: body.trim(),
         acks: acks.split('\n').map((a) => a.trim()).filter(Boolean), uploadedByName: profile.name, updatedAt: serverTimestamp(),
+        ...(pdf ? { fileName: pdf.name } : {}),
       };
       let docId = id;
       if (id) { await updateDoc(doc(db, 'ebinderDocs', id), { ...data, version: version + 1 }); }
       else { docId = (await addDoc(collection(db, 'ebinderDocs'), { ...data, version: 1 })).id; }
       const v = id ? version + 1 : 1;
       if (pdf) await updateDoc(doc(db, 'ebinderDocs', docId!), { pdfPath: await attachPdf(docId!, v, pdf.blob) });
+      const client = clients.find((c) => c.id === clientId[0]);
+      if (pdf && client) await mirrorEbinderDoc(docId!, pdf.name, folder[0], client, profile.uid, profile.name, pdf.blob.size).catch(() => {});
       await logEvent(docId!, profile, `${profile.name} uploaded v${v}`);
       router.replace({ pathname: '/admin/document-detail', params: { id: docId } } as never);
     } catch { setErr('Could not save the document.'); }
@@ -86,13 +90,10 @@ export default function EBinderNew() {
         <Text style={s.h2}>{id ? `New version (v${version + 1})` : 'Document details'}</Text>
         <Field label="Title" value={title} onChangeText={setTitle} />
         <Text style={{ fontWeight: '600' }}>Folder</Text>
-        <Chips<Folder> options={FOLDERS.map((f) => ({ value: f, label: f }))} selected={folder} onToggle={(v) => setFolder([v])} />
-        {(folder[0] === 'Care Plans' || folder[0] === 'Waiver & Medicaid') && (
-          <>
-            <Text style={{ fontWeight: '600' }}>Client this belongs to</Text>
-            <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={(v) => setClientId((c) => (c[0] === v ? [] : [v]))} />
-          </>
-        )}
+        <Chips<Folder> options={[...FOLDERS, ...(FOLDERS.includes(folder[0] as never) ? [] : [folder[0]])].map((f) => ({ value: f, label: f }))} selected={folder} onToggle={(v) => setFolder([v])} />
+        <Text style={{ fontWeight: '600' }}>Client this belongs to (optional)</Text>
+        <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={(v) => setClientId((c) => (c[0] === v ? [] : [v]))} />
+        {clientId[0] ? <Muted>It will also appear in this client's folder in the file manager.</Muted> : null}
         <Text style={{ fontWeight: '600' }}>Who can see it</Text>
         <Chips<Audience> options={(Object.keys(audienceLabel) as Audience[]).map((a) => ({ value: a, label: audienceLabel[a] }))} selected={audience} onToggle={(v) => setAudience([v])} />
         {audience[0] === 'assigned' && (

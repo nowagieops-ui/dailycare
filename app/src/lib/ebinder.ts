@@ -7,7 +7,7 @@ import { db, storage } from './firebase';
 import type { UserProfile } from './types';
 
 export const FOLDERS = ['Care Plans', 'HR & Personnel', 'Waiver & Medicaid', 'Policies'] as const;
-export type Folder = (typeof FOLDERS)[number];
+export type Folder = string; // the four standard folders, plus any subfolder made in a client's file-manager folder
 export type Audience = 'all_staff' | 'assigned' | 'admin';
 
 export interface EDoc {
@@ -20,7 +20,9 @@ export interface EDoc {
   requiresSignature: boolean;
   body: string; // may contain {{name}} and {{date}}; may be empty when a PDF is attached
   clientId?: string; // care plans and waivers belong to a client
-  pdfPath?: string; // Storage path of the attached PDF
+  pdfPath?: string; // Storage path of the attached file (eBinder PDF, or a file-manager file)
+  driveId?: string; // the file-manager item this document is linked to
+  fileName?: string;
   acks: string[]; // lines the signer must tick
   uploadedByName: string;
   updatedAt: Timestamp;

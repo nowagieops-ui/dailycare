@@ -6,7 +6,6 @@ import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useStaff } from '../../lib/admin-data';
 import { parseCsv, SHIFT_TEMPLATE, SHIFT_TEMPLATE_HEADERS } from '../../lib/csv';
 import { db } from '../../lib/firebase';
-import { placesEnabled } from '../../lib/places';
 import { generateDates, parseLocalDate, shiftWindow, type Pattern, type WeekCycle } from '../../lib/recurrence';
 import type { Client, UserProfile } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
@@ -84,7 +83,7 @@ export default function AddShift() {
     : [];
   const window0 = dates[0] ? shiftWindow(dates[0], startT, endT) : null;
   // With address search on, a changed address must be picked from the list so its map point is known.
-  const addressOk = !placesEnabled || !clientPick || address.trim() === clientPick.address.trim() || loc !== null;
+  const addressOk = !!clientPick && (address.trim() === clientPick.address.trim() || loc !== null);
   const ok = (staffPick || isOpen) && clientPick && addressOk && window0 && dates.length > 0;
 
   async function create() {
@@ -161,11 +160,9 @@ export default function AddShift() {
         <Field label="Staff phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Text style={{ fontWeight: '600' }}>Client</Text>
         <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={pickClient} />
-        {placesEnabled ? (
-          <AddressPicker label="Shift location (defaults to the client's address)" value={address}
-            confirmed={!!clientPick && (loc !== null || address.trim() === clientPick.address.trim())}
-            onText={(t) => { setAddress(t); setLoc(null); }} onPick={(p) => { setAddress(p.address); setLoc({ lat: p.lat, lng: p.lng }); }} />
-        ) : <Field label="Shift location (address)" value={address} onChangeText={setAddress} />}
+        <AddressPicker label="Shift location (defaults to the client's address)" value={address}
+          confirmed={!!clientPick && (loc !== null || address.trim() === clientPick.address.trim())}
+          onText={(t) => { setAddress(t); setLoc(null); }} onPick={(p) => { setAddress(p.address); setLoc({ lat: p.lat, lng: p.lng }); }} />
         <Field label="Allowed radius (metres)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
         <DateField label="Start date" value={date} onChange={setDate} />
         <TimeField label="Start time" value={startT} onChange={setStartT} />

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Linking, Platform, Share, Text } from 'react-native';
 import { createFeedUrl, toWebcal } from '../../lib/calendar';
 import { colors } from '../../lib/theme';
-import { Btn, Card, Muted, s, Screen } from '../../lib/ui';
+import { StaffScreen } from '../../lib/staff-ui';
+import { Btn, Card, Muted, s } from '../../lib/ui';
 
 export default function CalendarSync() {
   const [url, setUrl] = useState('');
@@ -22,7 +23,7 @@ export default function CalendarSync() {
   }
 
   return (
-    <Screen title="Sync to my calendar">
+    <StaffScreen title="Sync to my calendar">
       <Card>
         <Muted>
           Your shifts can show up in your own phone calendar and update automatically. Events show only the time
@@ -51,6 +52,6 @@ export default function CalendarSync() {
           </Card>
         </>
       ) : null}
-    </Screen>
+    </StaffScreen>
   );
 }

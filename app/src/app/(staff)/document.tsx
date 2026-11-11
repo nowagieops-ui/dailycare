@@ -33,7 +33,6 @@ export default function DocumentScreen() {
 
   if (!d || !profile) return <StaffScreen title="Document"><Muted>Loading…</Muted></StaffScreen>;
   const today = new Date().toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
-  const back = <Pressable onPress={() => router.replace('/documents' as never)}><Text style={{ color: colors.primary, fontWeight: '700' }}>← My Documents</Text></Pressable>;
   const paper = (
     <Card>
       <Muted>{agency}</Muted>
@@ -44,8 +43,8 @@ export default function DocumentScreen() {
   );
 
   // Care plans and policies without a signature are view-only.
-  if (!d.requiresSignature) return <StaffScreen title={d.title}>{back}<Muted>View only · v{d.version}</Muted>{paper}</StaffScreen>;
-  if (signed) return <StaffScreen title={d.title}>{back}<Muted>You signed this document.</Muted>{paper}</StaffScreen>;
+  if (!d.requiresSignature) return <StaffScreen title={d.title}><Muted>View only · v{d.version}</Muted>{paper}</StaffScreen>;
+  if (signed) return <StaffScreen title={d.title}><Muted>You signed this document.</Muted>{paper}</StaffScreen>;
 
   const ready = name.trim().length > 1 && ticked.every(Boolean);
 
@@ -59,7 +58,7 @@ export default function DocumentScreen() {
   if (step === 'fill') {
     return (
       <StaffScreen title="Fill Document">
-        {back}
+        
         <Eyebrow>{d.folder}</Eyebrow>
         <Text style={s.h1}>{d.title}</Text>
         <Muted>Fill in the fields below. You'll see the finished document before it's submitted to your compliance file.</Muted>

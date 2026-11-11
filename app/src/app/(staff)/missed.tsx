@@ -7,7 +7,8 @@ import { db } from '../../lib/firebase';
 import { atTime } from '../../lib/recurrence';
 import { useMyShifts } from '../../lib/shifts';
 import { useMissedRequests } from '../../lib/credentials';
-import { Btn, Card, Chips, Field, fmtDay, Muted, Pill, s, Screen } from '../../lib/ui';
+import { StaffScreen } from '../../lib/staff-ui';
+import { Btn, Card, Chips, Field, fmtDay, Muted, Pill, s } from '../../lib/ui';
 
 export default function Missed() {
   const { profile } = useAuth();
@@ -39,7 +40,7 @@ export default function Missed() {
   }
 
   return (
-    <Screen title="Report missed clock-in">
+    <StaffScreen title="Report missed clock-in">
       <Card>
         <Text style={s.h2}>Which shift?</Text>
         {open.length === 0 && <Muted>No unfinished shifts from the last 7 days.</Muted>}
@@ -57,6 +58,6 @@ export default function Missed() {
           <Pill text={r.status} tone={r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'amber'} />
         </Card>
       ))}
-    </Screen>
+    </StaffScreen>
   );
 }

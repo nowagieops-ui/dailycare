@@ -121,7 +121,6 @@ export default function FormEdit() {
   const flat = pdf && detected && !detected.fillable;
   return (
     <Screen title="PDF Form">
-      <Pressable onPress={() => router.replace('/admin/forms' as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>← Back to PDF Forms</Text></Pressable>
       <Card>
         <Field label="Form name" value={title} onChangeText={setTitle} />
         {!existing && <Btn label={pdf ? `PDF: ${pdf.name} (tap to change)` : 'Choose the PDF'} tone="ghost" onPress={pickPdf} busy={busy} />}

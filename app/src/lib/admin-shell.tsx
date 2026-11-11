@@ -36,7 +36,17 @@ const TITLES: Record<string, string> = {
   '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/form-edit': 'PDF Form', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'Staff detail','/admin/audit': 'Audit log',
   '/admin/add-staff': 'Add staff member', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
 };
-const isActive = (path: string, href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(href + '/'));
+// Pages opened from a section keep that section lit in the sidebar and go back to it.
+const PARENT: Record<string, string> = {
+  '/admin/add-shift': '/admin/scheduling', '/admin/add-staff': '/admin/staff', '/admin/staff-detail': '/admin/staff',
+  '/admin/add-client': '/admin/clients', '/admin/client-detail': '/admin/clients',
+  '/admin/ebinder-new': '/admin/ebinders', '/admin/document-detail': '/admin/ebinders',
+  '/admin/form-edit': '/admin/forms', '/admin/chat-thread': '/admin/chat', '/admin/audit': '/admin/settings',
+  '/admin/notifications': '/admin', '/admin/search': '/admin',
+};
+const clean = (p: string) => p.replace(/\/+$/, '') || '/';
+const sectionOf = (path: string) => PARENT[clean(path)] ?? clean(path);
+const isActive = (path: string, href: string) => { const p = sectionOf(path); return href === '/admin' ? p === '/admin' : p === href || p.startsWith(href + '/'); };
 const titleOf = (path: string) =>
   TITLES[path] ?? [...MAIN, ...MORE].find((i) => isActive(path, i.href))?.label ?? 'Admin';
 
@@ -47,8 +57,8 @@ function Nav({ path, onGo }: { path: string; onGo: () => void }) {
     const on = isActive(path, i.href);
     return (
       <Pressable
-        key={i.href} accessibilityRole="link" onPress={() => { onGo(); router.push(i.href as never); }}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: on ? 'rgba(255,255,255,0.16)' : 'transparent' }}
+        key={i.href} accessibilityRole="link" accessibilityState={{ selected: on }} onPress={() => { onGo(); router.push(i.href as never); }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: on ? colors.primary : 'transparent', borderLeftWidth: 4, borderLeftColor: on ? '#fff' : 'transparent' }}
       >
         <Ionicons name={i.icon} size={18} color={on ? '#fff' : 'rgba(255,255,255,0.7)'} />
         <Text style={{ color: on ? '#fff' : 'rgba(255,255,255,0.78)', fontWeight: on ? '700' : '500', fontSize: 14 }}>{i.label}</Text>
@@ -110,6 +120,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const topbar = (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.paper, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+      {PARENT[clean(path)] && (
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => { if (router.canGoBack()) router.back(); else router.replace(PARENT[clean(path)] as never); }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, paddingLeft: 2, borderRadius: 8, backgroundColor: colors.tint }}>
+          <Ionicons name="chevron-back" size={20} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Back</Text>
+        </Pressable>
+      )}
       {!wide && (
         <Pressable accessibilityLabel="Open menu" onPress={() => setOpen(true)} style={{ padding: 4 }}>
           <Ionicons name="menu" size={26} color={colors.navy} />

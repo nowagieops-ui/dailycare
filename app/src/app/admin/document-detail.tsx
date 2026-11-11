@@ -19,7 +19,6 @@ export default function DocumentDetail() {
 
   return (
     <Screen title="Document">
-      <Pressable onPress={() => router.replace('/admin/ebinders' as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>← Back to Compliance Documents</Text></Pressable>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
         <Card style={{ flexGrow: 2, flexBasis: 360, minWidth: 280 }}>
           <Muted>Document preview</Muted>

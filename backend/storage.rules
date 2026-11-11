@@ -15,7 +15,8 @@ service firebase.storage {
     // Files are stored under the Firestore document id (never the original filename).
     // Access is decided by that document, so one set of sharing rules governs both.
     match /drive/{fileId} {
-      allow read: if active() && (isSuper() || inList(fileDoc(fileId).viewers));
+      allow read: if active() && (isSuper() || inList(fileDoc(fileId).viewers)
+        || (isAdminUser() && fileDoc(fileId).get('linked', false) == true)); // client-folder files back eBinder documents
 
       allow create, update: if active()
         && request.resource.size > 0

@@ -39,7 +39,6 @@ export default function StaffDetail() {
 
   return (
     <Screen title="Staff">
-      <Pressable onPress={() => router.replace('/admin/staff' as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>← Back to Staff Directory</Text></Pressable>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>{initials(user.name)}</Text>

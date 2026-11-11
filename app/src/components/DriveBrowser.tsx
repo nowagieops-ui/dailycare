@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { Alert, Linking, Platform, Pressable, Text, View } from 'react-native';
-import { useStaff } from '../lib/admin-data';
-import { createFolder, deleteItem, fileUrl, myKeys, saveShares, uploadFile, useFolder } from '../lib/drive';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Linking, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useStaff, useClients } from '../lib/admin-data';
+import { createFolder, deleteItem, fileUrl, myKeys, saveShares, syncClientFolders, uploadFile, useAllFolders, useFolder } from '../lib/drive';
 import { roleKey, type Share } from '../lib/drive-access';
-import { colors } from '../lib/theme';
+import { colors, radius } from '../lib/theme';
 import type { DriveItem, Role } from '../lib/types';
-import { Btn, Card, Chips, Field, Muted, s } from '../lib/ui';
+import { Btn, Card, Chips, Field, Muted, s, Tag } from '../lib/ui';
 
-interface Props { mode: 'super' | 'staff'; uid: string; role: Role }
-type Crumb = DriveItem;
+interface Props { mode: 'super' | 'staff'; uid: string; role: Role; name?: string; startFolderId?: string }
 
 const ROLES = [
   { value: roleKey('staff'), label: 'All staff' },
@@ -26,14 +26,61 @@ function confirmAsk(message: string): Promise<boolean> {
   );
 }
 
-const fmtSize = (n?: number) => (n == null ? '' : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`);
+const fmtSize = (n?: number) => (n == null ? '–' : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`);
+const fmtDate = (it: DriveItem) => it.createdAt?.toDate().toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) ?? '–';
+const W = [3, 1.6, 0.8, 1.8, 1.4, 1.4]; // Name, eBinder, Size, Date modified, Updated by, Actions
 
-export function DriveBrowser({ mode, uid, role }: Props) {
-  const [trail, setTrail] = useState<Crumb[]>([]);
+/** Folder tree on the left (super admin): click to jump, arrow to expand. */
+function Tree({ folders, trail, onGo }: { folders: DriveItem[]; trail: DriveItem[]; onGo: (f: DriveItem | null) => void }) {
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const kids = useMemo(() => {
+    const m = new Map<string | null, DriveItem[]>();
+    for (const f of folders) m.set(f.parentId, [...(m.get(f.parentId) ?? []), f]);
+    for (const l of m.values()) l.sort((a, b) => a.name.localeCompare(b.name));
+    return m;
+  }, [folders]);
+  const here = trail[trail.length - 1]?.id ?? null;
+  const row = (f: DriveItem, depth: number): React.ReactNode => {
+    const sub = kids.get(f.id) ?? [];
+    const expanded = open[f.id] || trail.some((t) => t.id === f.id);
+    return (
+      <View key={f.id}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: depth * 14, backgroundColor: here === f.id ? colors.tint : 'transparent', borderRadius: 6 }}>
+          <Pressable onPress={() => setOpen((o) => ({ ...o, [f.id]: !expanded }))} style={{ width: 24, alignItems: 'center', paddingVertical: 6 }} accessibilityLabel={expanded ? 'Collapse' : 'Expand'}>
+            {sub.length > 0 ? <Ionicons name={expanded ? 'chevron-down' : 'chevron-forward'} size={14} color={colors.inkSoft} /> : null}
+          </Pressable>
+          <Pressable onPress={() => onGo(f)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
+            <Ionicons name="folder" size={16} color="#E8B93C" />
+            <Text numberOfLines={1} style={{ flex: 1, fontSize: 13, color: colors.ink, fontWeight: here === f.id ? '700' : '500' }}>{f.name}</Text>
+          </Pressable>
+        </View>
+        {expanded && sub.map((k) => row(k, depth + 1))}
+      </View>
+    );
+  };
+  return (
+    <View style={{ gap: 2 }}>
+      <Pressable onPress={() => onGo(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, backgroundColor: here === null ? colors.tint : 'transparent', borderRadius: 6 }}>
+        <Ionicons name="home-outline" size={16} color={colors.primary} />
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>All files</Text>
+      </Pressable>
+      {(kids.get(null) ?? []).map((f) => row(f, 0))}
+    </View>
+  );
+}
+
+export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Props) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 900 && mode === 'super';
+  const [trail, setTrail] = useState<DriveItem[]>([]);
   const here = trail[trail.length - 1] ?? null;
   const items = useFolder(here?.id ?? null, mode, myKeys(uid, role));
+  const { items: allFolders, loaded } = useAllFolders(mode === 'super');
   const staff = useStaff().filter((u) => u.role === 'staff' || u.role === 'family_staff');
+  const clients = useClients();
   const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [find, setFind] = useState('');
   const [msg, setMsg] = useState('');
   const [sharing, setSharing] = useState<DriveItem | null>(null);
   const [viewKeys, setViewKeys] = useState<string[]>([]);
@@ -42,15 +89,41 @@ export function DriveBrowser({ mode, uid, role }: Props) {
   const mine = (k: string) => k === uid || k === roleKey(role);
   const canUpload = mode === 'super' || (here !== null && here.uploaders.some(mine));
   const web = Platform.OS === 'web';
+  const office = mode === 'super';
+  const byId = useMemo(() => new Map(allFolders.map((f) => [f.id, f])), [allFolders]);
+
+  // Every client gets a folder (with the eBinder subfolders) so documents can be filed straight away.
+  const synced = useRef('');
+  useEffect(() => {
+    if (mode !== 'super' || !loaded || clients.length === 0) return;
+    const key = `${clients.length}:${allFolders.length}`;
+    if (synced.current === key) return;
+    synced.current = key;
+    syncClientFolders(clients, new Set(allFolders.map((f) => f.id)), uid, name).catch(() => {});
+  }, [mode, loaded, clients.length, allFolders.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Open at a requested folder (e.g. from a client's eBinder tab).
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || !startFolderId) return;
+    const f = byId.get(startFolderId);
+    if (f) { opened.current = true; goTo(f); }
+  }, [byId, startFolderId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function goTo(f: DriveItem | null) {
+    setFind(''); setSharing(null); setCreating(false);
+    if (!f) return setTrail([]);
+    setTrail([...f.path, f.id].map((id) => (id === f.id ? f : byId.get(id))).filter(Boolean) as DriveItem[]);
+  }
+  const back = () => setTrail((t) => t.slice(0, -1));
 
   function pickFile() {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
     input.onchange = async () => {
-      const files = Array.from(input.files ?? []);
-      for (const f of files) {
-        const problem = await uploadFile(f, here, uid);
+      for (const f of Array.from(input.files ?? [])) {
+        const problem = await uploadFile(f, here, uid, name, office);
         setMsg(problem ?? `Uploaded ${f.name}`);
         if (problem) return;
       }
@@ -59,14 +132,12 @@ export function DriveBrowser({ mode, uid, role }: Props) {
   }
 
   async function open(item: DriveItem) {
-    if (item.type === 'folder') return setTrail([...trail, item]);
+    if (item.type === 'folder') { setFind(''); return setTrail((t) => [...t, item]); }
     try {
       const url = await fileUrl(item);
       if (web) window.open(url, '_blank', 'noopener');
       else await Linking.openURL(url);
-    } catch {
-      setMsg('Could not open that file.');
-    }
+    } catch { setMsg('Could not open that file.'); }
   }
 
   function startShare(item: DriveItem) {
@@ -74,7 +145,6 @@ export function DriveBrowser({ mode, uid, role }: Props) {
     setViewKeys(item.ownShares.filter((x) => x.level === 'view').map((x) => x.key));
     setUpKeys(item.ownShares.filter((x) => x.level === 'upload').map((x) => x.key));
   }
-
   async function commitShare() {
     if (!sharing) return;
     const own: Share[] = [
@@ -85,58 +155,99 @@ export function DriveBrowser({ mode, uid, role }: Props) {
     setMsg(`Sharing updated for "${sharing.name}".`);
     setSharing(null);
   }
+  async function remove(it: DriveItem) {
+    const extra = it.type === 'folder' ? ' and everything inside it' : '';
+    const linked = it.ebinderDocId && !it.fromEbinder ? ' Its eBinder document is deleted too.' : it.fromEbinder ? ' The eBinder copy stays.' : '';
+    if (await confirmAsk(`Delete "${it.name}"${extra}?${linked} This cannot be undone.`)) await deleteItem(it);
+  }
 
   const toggle = (set: (f: (c: string[]) => string[]) => void) => (v: string) =>
     set((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v]));
   const people = [...ROLES, ...staff.map((u) => ({ value: u.id, label: u.name }))];
+  const shown = find.trim() ? items.filter((i) => i.name.toLowerCase().includes(find.trim().toLowerCase())) : items;
 
-  return (
-    <View style={{ gap: 12 }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        <Pressable onPress={() => setTrail([])}><Text style={{ color: colors.primary, fontWeight: '700' }}>Files</Text></Pressable>
-        {trail.map((c, i) => (
-          <Pressable key={c.id} onPress={() => setTrail(trail.slice(0, i + 1))}>
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>/ {c.name}</Text>
-          </Pressable>
-        ))}
+  const main = (
+    <View style={{ flex: 1, gap: 12, minWidth: 0 }}>
+      {/* Path bar: Back goes up one folder; every part of the path is clickable. */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+        <Pressable onPress={back} disabled={trail.length === 0} accessibilityRole="button" accessibilityLabel="Back one folder"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, paddingLeft: 4, borderRadius: 8, backgroundColor: colors.tint, opacity: trail.length === 0 ? 0.4 : 1 }}>
+          <Ionicons name="chevron-back" size={18} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Back</Text>
+        </Pressable>
+        <View style={{ flex: 1, minWidth: 160, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+          <Pressable onPress={() => goTo(null)}><Text style={{ color: colors.primary, fontWeight: '700' }}>{mode === 'super' ? 'All files' : 'Shared with me'}</Text></Pressable>
+          {trail.map((c, i) => (
+            <Pressable key={c.id} onPress={() => setTrail(trail.slice(0, i + 1))}>
+              <Text style={{ color: i === trail.length - 1 ? colors.ink : colors.primary, fontWeight: '700' }}>  /  {c.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: 10, width: 240 }}>
+          <Ionicons name="search" size={15} color={colors.inkFaint} />
+          <TextInput value={find} onChangeText={setFind} placeholder="Search in this folder…" placeholderTextColor={colors.inkFaint}
+            style={{ flex: 1, paddingVertical: 8, fontSize: 13, color: colors.ink, outlineStyle: 'none' } as never} />
+        </View>
       </View>
 
-      {mode === 'super' && (
+      {/* Toolbar */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        {mode === 'super' && <View style={{ width: 150 }}><Btn label="＋ Create folder" onPress={() => setCreating((c) => !c)} tone={creating ? 'ghost' : 'primary'} /></View>}
+        {canUpload && (web
+          ? <View style={{ width: 150 }}><Btn label="Upload files" tone="ghost" onPress={pickFile} /></View>
+          : <Muted>Uploading is available from the web dashboard.</Muted>)}
+        {here?.clientId && office ? <Muted>Files added here also appear in this client's eBinder.</Muted> : null}
+      </View>
+      {creating && (
         <Card>
-          <Field label="New folder name" value={newName} onChangeText={setNewName} />
-          <Btn label="Create folder" disabled={!newName.trim()} onPress={async () => { await createFolder(newName, here, uid); setNewName(''); }} />
+          <Field label={`New folder in ${here?.name ?? 'All files'}`} value={newName} onChangeText={setNewName} />
+          <Btn label="Create folder" disabled={!newName.trim()} onPress={async () => { await createFolder(newName, here, uid, name); setNewName(''); setCreating(false); }} />
         </Card>
       )}
-      {canUpload && (web
-        ? <Btn label="Upload files" onPress={pickFile} />
-        : <Muted>Uploading is available from the web dashboard.</Muted>)}
       <Muted>PDF, Word, Excel, PNG, JPEG, TXT or CSV, up to 25 MB each.</Muted>
       {msg ? <Text style={{ color: colors.inkSoft }}>{msg}</Text> : null}
 
-      {items.length === 0 && <Muted>{mode === 'staff' && !here ? 'Nothing has been shared with you yet.' : 'This folder is empty.'}</Muted>}
-      {items.map((it) => (
-        <Card key={it.id}>
-          <Pressable onPress={() => open(it)} accessibilityRole="button">
-            <Text style={s.h2}>{it.type === 'folder' ? '📁 ' : '📄 '}{it.name}</Text>
-            {it.type === 'file' && <Muted>{fmtSize(it.size)}</Muted>}
-          </Pressable>
-          {mode === 'super' && (
-            <>
-              <Muted>
-                {it.ownShares.length === 0 ? 'Not shared directly' : `Shared with ${it.ownShares.length} ${it.ownShares.length === 1 ? 'person/group' : 'people/groups'}`}
-              </Muted>
-              <Btn label="Share" tone="ghost" onPress={() => startShare(it)} />
-              <Btn
-                label="Delete" tone="danger"
-                onPress={async () => {
-                  const extra = it.type === 'folder' ? ' and everything inside it' : '';
-                  if (await confirmAsk(`Delete "${it.name}"${extra}? This cannot be undone.`)) await deleteItem(it);
-                }}
-              />
-            </>
-          )}
-        </Card>
-      ))}
+      {/* File list */}
+      <Card style={{ padding: 0 }}>
+        <ScrollView horizontal>
+          <View style={{ minWidth: 760, flex: 1 }}>
+            <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
+              {['Item name', 'eBinder', 'Size', 'Date modified', 'Updated by', ''].map((h, i) => (
+                <View key={i} style={{ flex: W[i], paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>
+              ))}
+            </View>
+            {shown.length === 0 && (
+              <View style={{ padding: 12 }}>
+                <Muted>{find.trim() ? 'Nothing here matches your search.' : mode === 'staff' && !here ? 'Nothing has been shared with you yet.' : 'This folder is empty.'}</Muted>
+              </View>
+            )}
+            {shown.map((it) => (
+              <View key={it.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
+                <Pressable onPress={() => open(it)} accessibilityRole="button" style={{ flex: W[0], paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name={it.type === 'folder' ? 'folder' : 'document-text-outline'} size={22} color={it.type === 'folder' ? '#E8B93C' : colors.inkSoft} />
+                  <Text numberOfLines={2} style={{ flex: 1, fontWeight: '600', color: colors.ink }}>{it.name}</Text>
+                </Pressable>
+                <View style={{ flex: W[1], paddingRight: 8 }}>
+                  {it.ebinderDocId ? <Tag text={`eBinder · ${it.ebinderFolder || 'General'}`} tone="blue" /> : it.clientId && it.type === 'folder' ? <Tag text="Client folder" tone="neutral" /> : null}
+                </View>
+                <View style={{ flex: W[2], paddingRight: 8 }}><Text style={{ color: colors.inkSoft }}>{it.type === 'file' ? fmtSize(it.size) : '–'}</Text></View>
+                <View style={{ flex: W[3], paddingRight: 8 }}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{fmtDate(it)}</Text></View>
+                <View style={{ flex: W[4], paddingRight: 8 }}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{it.ownerName || '–'}</Text></View>
+                <View style={{ flex: W[5], flexDirection: 'row', gap: 14, justifyContent: 'flex-end' }}>
+                  {mode === 'super' && (
+                    <>
+                      <Pressable onPress={() => startShare(it)} accessibilityRole="button">
+                        <Text style={{ color: colors.primary, fontWeight: '700' }}>{it.ownShares.length ? `Shared (${it.ownShares.length})` : 'Share'}</Text>
+                      </Pressable>
+                      <Pressable onPress={() => remove(it)} accessibilityRole="button"><Text style={{ color: colors.red, fontWeight: '700' }}>Delete</Text></Pressable>
+                    </>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </Card>
 
       {sharing && (
         <Card>
@@ -154,6 +265,14 @@ export function DriveBrowser({ mode, uid, role }: Props) {
           <Btn label="Cancel" tone="ghost" onPress={() => setSharing(null)} />
         </Card>
       )}
+    </View>
+  );
+
+  if (!wide) return main;
+  return (
+    <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
+      <Card style={{ width: 270, padding: 10 }}><Tree folders={allFolders} trail={trail} onGo={goTo} /></Card>
+      {main}
     </View>
   );
 }

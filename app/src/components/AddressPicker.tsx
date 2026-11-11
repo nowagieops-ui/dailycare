@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { newSessionToken, placeDetails, suggest, type PickedPlace, type Suggestion } from '../lib/places';
+import { newSessionToken, placeDetails, placesEnabled, suggest, type PickedPlace, type Suggestion } from '../lib/places';
 import { colors, radius } from '../lib/theme';
 import { s } from '../lib/ui';
 
@@ -17,6 +17,7 @@ export function AddressPicker({ label, value, confirmed, onText, onPick }: {
   const skip = useRef(false);
 
   useEffect(() => {
+    if (!placesEnabled) return;
     if (skip.current) { skip.current = false; return; }
     if (value.trim().length < 4) { setItems([]); return; }
     const ctl = new AbortController();
@@ -39,6 +40,7 @@ export function AddressPicker({ label, value, confirmed, onText, onPick }: {
   return (
     <View style={{ gap: 4 }}>
       <Text style={{ fontWeight: '600', color: colors.inkSoft, fontSize: 13 }}>{label}</Text>
+      {!placesEnabled && <Text style={{ color: colors.red, fontSize: 12 }}>Address search is not set up yet (the Google Maps key is missing), so addresses cannot be verified. Add EXPO_PUBLIC_GOOGLE_MAPS_KEY to the app settings.</Text>}
       <TextInput value={value} onChangeText={onText} placeholder="Start typing the street address" placeholderTextColor={colors.inkFaint}
         autoCapitalize="words" autoCorrect={false} style={[s.input, confirmed && { borderColor: colors.green }]} />
       {items.length > 0 && (

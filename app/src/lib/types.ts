@@ -130,6 +130,12 @@ export interface DriveItem {
   viewers: string[]; // effective access (own + inherited)
   uploaders: string[];
   sharedRoot: boolean; // true where a share was set directly; staff see these at their top level
+  ownerName?: string; // who added it (shown as "Updated by")
+  linked?: boolean; // true for the Individuals tree: office roles can read it and its files mirror into eBinders
+  clientId?: string; // the client this folder or file belongs to
+  ebinderFolder?: string; // eBinder folder name this maps to ('' = the client's top folder, shown as General)
+  ebinderDocId?: string; // the eBinder document this file is linked to
+  fromEbinder?: boolean; // true when the file's bytes live in eBinder storage (uploaded there first)
   size?: number;
   contentType?: string;
   createdAt: Timestamp;

@@ -37,17 +37,18 @@ function Row({ d, W }: { d: EDoc; W: number[] }) {
 export default function EBinders() {
   const docs = useAdminDocs();
   const [folder, setFolder] = useState<string[]>([]);
+  const folders = [...FOLDERS, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !(FOLDERS as readonly string[]).includes(f)).sort()];
   const shown = folder.length ? docs.filter((d) => d.folder === folder[0]) : docs;
   const W = [2.4, 1.4, 0.6, 1.2, 1.4, 1.2];
 
   return (
     <Screen title="Compliance Documents">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-        <View style={{ flex: 1, minWidth: 240 }}><Chips options={FOLDERS.map((f) => ({ value: f as string, label: f }))} selected={folder} onToggle={(v) => setFolder((c) => (c[0] === v ? [] : [v]))} /></View>
+        <View style={{ flex: 1, minWidth: 240 }}><Chips options={folders.map((f) => ({ value: f as string, label: f }))} selected={folder} onToggle={(v) => setFolder((c) => (c[0] === v ? [] : [v]))} /></View>
         <View style={{ width: 190 }}><Btn label="Upload document" onPress={() => router.push('/admin/ebinder-new' as never)} /></View>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        {FOLDERS.map((f) => (
+        {folders.map((f) => (
           <Card key={f} style={{ minWidth: 180, flexGrow: 1 }}>
             <Text style={{ fontWeight: '700', color: colors.navy }}>{f}</Text>
             <Muted>{docs.filter((d) => d.folder === f).length} documents</Muted>

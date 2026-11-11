@@ -80,7 +80,10 @@ service cloud.firestore {
     function driveDoc(id) { return get(/databases/$(database)/documents/drive/$(id)).data; }
     function inList(list) { return request.auth.uid in list || ('role:' + me().role) in list; }
     match /drive/{id} {
-      allow read: if isSuper() || (isActive() && inList(resource.data.viewers));
+      // Office roles can read the linked "Individuals" tree (client folders), because their eBinder documents mirror into it.
+      allow read: if isSuper()
+        || (isOffice() && (resource == null || resource.data.get('linked', false) == true))
+        || (isActive() && inList(resource.data.viewers));
       // Staff may add a file only into a folder where they have upload access, inheriting its access.
       allow create: if isSuper() || (isActive()
         && request.resource.data.type == 'file'
@@ -90,7 +93,18 @@ service cloud.firestore {
         && request.resource.data.viewers == driveDoc(request.resource.data.parentId).viewers
         && request.resource.data.uploaders == driveDoc(request.resource.data.parentId).uploaders
         && request.resource.data.ownShares.size() == 0
-        && request.resource.data.sharedRoot == false);
+        && request.resource.data.sharedRoot == false)
+        // Office roles may create the linked client folders and the mirror of an eBinder upload (file manager <-> eBinder link).
+        || (isOffice()
+        && request.resource.data.get('linked', false) == true
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownShares.size() == 0
+        && request.resource.data.sharedRoot == false
+        && (request.resource.data.parentId == null
+              ? (id == 'individuals' && request.resource.data.viewers.size() == 0 && request.resource.data.uploaders.size() == 0)
+              : (driveDoc(request.resource.data.parentId).get('linked', false) == true
+                 && request.resource.data.viewers == driveDoc(request.resource.data.parentId).viewers
+                 && request.resource.data.uploaders == driveDoc(request.resource.data.parentId).uploaders)));
       allow update, delete: if isSuper();
     }
 

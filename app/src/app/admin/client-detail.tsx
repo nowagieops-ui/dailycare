@@ -4,7 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useShiftsBetween } from '../../lib/admin-data';
-import { audienceLabel, useAdminDocs } from '../../lib/ebinder';
+import { useAuth } from '../../lib/auth';
+import { clientFolderId } from '../../lib/drive';
+import { audienceLabel, FOLDERS, useAdminDocs } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
 import { colors } from '../../lib/theme';
 import { Btn, Card, fmtDay, fmtTime, Field, initials, Muted, s, Screen, Tag } from '../../lib/ui';
@@ -19,6 +21,7 @@ export default function ClientDetail() {
   const today = useMemo(() => startOfDay(new Date()), []);
   const shifts = useShiftsBetween(addDays(today, -90), addDays(today, 30)).filter((x) => x.clientId === id);
   const docs = useAdminDocs().filter((d) => d.clientId === id);
+  const { profile } = useAuth();
   const [tab, setTab] = useState<(typeof TABS)[number]>('ISP / Care Plan');
   const [goals, setGoals] = useState('');
   const [last, setLast] = useState('');
@@ -30,6 +33,7 @@ export default function ClientDetail() {
   }, [c?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!c) return <Screen title="Client"><Muted>Loading…</Muted></Screen>;
+  const folders = [...FOLDERS, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !(FOLDERS as readonly string[]).includes(f)).sort()];
   const st = reviewStatus(c.nextReview);
   const visits = shifts.filter((x) => x.status === 'completed').sort((a, b) => b.start.toMillis() - a.start.toMillis());
   const team = [...new Map(shifts.filter((x) => x.staffId).map((x) => [x.staffId, x.staffName || 'Staff'])).entries()];
@@ -43,7 +47,6 @@ export default function ClientDetail() {
 
   return (
     <Screen title="Client">
-      <Pressable onPress={() => router.replace('/admin/clients' as never)}><Text style={{ color: colors.primary, fontWeight: '600' }}>← Back to Clients Directory</Text></Pressable>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>{initials(c.name)}</Text>
@@ -77,16 +80,37 @@ export default function ClientDetail() {
       )}
 
       {tab === 'eBinder' && (
-        <Card>
-          <Text style={s.h2}>eBinder</Text>
-          {docs.length === 0 && <Muted>No documents linked to this client yet. When you upload a Care Plan or Waiver document, pick this client.</Muted>}
-          {docs.map((d) => (
-            <Pressable key={d.id} onPress={() => router.push({ pathname: '/admin/document-detail', params: { id: d.id } } as never)} style={{ paddingVertical: 6 }}>
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>{d.title}</Text>
-              <Muted>{d.folder} · v{d.version} · {audienceLabel[d.audience]}</Muted>
-            </Pressable>
-          ))}
-        </Card>
+        <>
+          <Card>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <Text style={s.h2}>{c.name}'s eBinder</Text>
+                <Muted>Everything here is also in this client's folder in the file manager. A file added in either place shows up in both.</Muted>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ width: 170 }}><Btn label="Upload document" onPress={() => router.push({ pathname: '/admin/ebinder-new', params: { clientId: c.id } } as never)} /></View>
+                {profile?.role === 'super_admin' && (
+                  <View style={{ width: 170 }}><Btn label="Open in file manager" tone="ghost" onPress={() => router.push({ pathname: '/admin/files', params: { folder: clientFolderId(c.id) } } as never)} /></View>
+                )}
+              </View>
+            </View>
+          </Card>
+          {folders.map((f) => {
+            const inFolder = docs.filter((d) => d.folder === f);
+            return (
+              <Card key={f}>
+                <Text style={s.h2}>📁 {f} <Text style={{ color: colors.inkFaint, fontWeight: '500' }}>({inFolder.length})</Text></Text>
+                {inFolder.length === 0 && <Muted>Nothing in this folder yet.</Muted>}
+                {inFolder.map((d) => (
+                  <Pressable key={d.id} onPress={() => router.push({ pathname: '/admin/document-detail', params: { id: d.id } } as never)} style={{ paddingVertical: 6 }}>
+                    <Text style={{ color: colors.primary, fontWeight: '600' }}>{d.title}</Text>
+                    <Muted>v{d.version} · {audienceLabel[d.audience]}</Muted>
+                  </Pressable>
+                ))}
+              </Card>
+            );
+          })}
+        </>
       )}
 
       {tab === 'Visit History' && (
