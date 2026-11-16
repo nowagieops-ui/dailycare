@@ -12,7 +12,11 @@ export default function Requests() {
     const b = writeBatch(db);
     b.update(doc(db, 'missedClockIns', r.id), { status: approve ? 'approved' : 'rejected' });
     // Approval records the corrected punch times on the shift itself.
-    if (approve) b.update(doc(db, 'shifts', r.shiftId), { clockInAt: r.clockIn, clockOutAt: r.clockOut, status: 'completed' });
+    if (approve) {
+      b.update(doc(db, 'shifts', r.shiftId), {
+        ...(r.clockIn ? { clockInAt: r.clockIn } : {}), ...(r.clockOut ? { clockOutAt: r.clockOut, status: 'completed' } : { status: 'clocked_in' }),
+      });
+    }
     await b.commit();
   }
 
@@ -22,7 +26,11 @@ export default function Requests() {
       {rows.map((r) => (
         <Card key={r.id}>
           <Text style={s.h2}>{r.staffName} · {r.clientName}</Text>
-          <Muted>{fmtDay(r.clockIn.toMillis())}, {fmtTime(r.clockIn.toMillis())} – {fmtTime(r.clockOut.toMillis())}</Muted>
+          <Muted>
+            {r.missed === 'out' ? 'Missed clock out' : r.missed === 'both' ? 'Missed clock in and out' : 'Missed clock in'} · {fmtDay((r.clockIn ?? r.clockOut)!.toMillis())}
+            {r.clockIn ? ` · In ${fmtTime(r.clockIn.toMillis())}` : ''}{r.clockOut ? ` · Out ${fmtTime(r.clockOut.toMillis())}` : ''}
+          </Muted>
+          {r.fullName && r.fullName !== r.staffName ? <Muted>Name on form: {r.fullName}</Muted> : null}
           <Text>{r.reason}</Text>
           <Btn label="Approve and fix times" onPress={() => decide(r, true)} />
           <Btn label="Reject" tone="danger" onPress={() => decide(r, false)} />

@@ -112,9 +112,11 @@ export interface MissedClockIn {
   staffName: string;
   shiftId: string;
   clientName: string;
-  reason: string;
-  clockIn: Timestamp;
-  clockOut: Timestamp;
+  reason: string; // the chosen reason (and any extra details)
+  fullName?: string; // as typed on the form
+  missed?: 'in' | 'out' | 'both';
+  clockIn?: Timestamp; // present when the clock-in was missed
+  clockOut?: Timestamp; // present when the clock-out was missed
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Timestamp;
 }
