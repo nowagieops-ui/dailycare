@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStaff, useClients } from '../lib/admin-data';
 import { createFolder, deleteItem, fileUrl, myKeys, saveShares, syncClientFolders, uploadFile, useAllFolders, useFolder } from '../lib/drive';
@@ -28,7 +28,8 @@ function confirmAsk(message: string): Promise<boolean> {
 
 const fmtSize = (n?: number) => (n == null ? '–' : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const fmtDate = (it: DriveItem) => it.createdAt?.toDate().toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) ?? '–';
-const W = [3, 1.6, 0.8, 1.8, 1.4, 1.4]; // Name, eBinder, Size, Date modified, Updated by, Actions
+const W = [3, 1.6, 0.8, 1.8, 1.4, 1.5];
+const Head = ({ flex, t }: { flex: number; t: string }) => <View style={{ flex, paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{t}</Text></View>; // Name, eBinder, Size, Date modified, Updated by, Actions
 
 /** Folder tree on the left (super admin): click to jump, arrow to expand. */
 function Tree({ folders, trail, onGo }: { folders: DriveItem[]; trail: DriveItem[]; onGo: (f: DriveItem | null) => void }) {
@@ -72,6 +73,9 @@ function Tree({ folders, trail, onGo }: { folders: DriveItem[]; trail: DriveItem
 export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= 900 && mode === 'super';
+  // Space left for the table after the admin sidebar (248), folder tree (270) and padding. Columns drop out as it shrinks.
+  const avail = width - (width >= 900 ? 248 : 0) - (wide ? 270 + 16 : 0) - 32;
+  const showBy = avail >= 820, showEb = avail >= 700, showDate = avail >= 520, showSize = avail >= 440;
   const [trail, setTrail] = useState<DriveItem[]>([]);
   const here = trail[trail.length - 1] ?? null;
   const items = useFolder(here?.id ?? null, mode, myKeys(uid, role));
@@ -167,7 +171,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   const shown = find.trim() ? items.filter((i) => i.name.toLowerCase().includes(find.trim().toLowerCase())) : items;
 
   const main = (
-    <View style={{ flex: 1, gap: 12, minWidth: 0 }}>
+    <View style={{ flex: 1, gap: 12, minWidth: 0, width: '100%' }}>
       {/* Path bar: Back goes up one folder; every part of the path is clickable. */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         <Pressable onPress={back} disabled={trail.length === 0} accessibilityRole="button" accessibilityLabel="Back one folder"
@@ -183,7 +187,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
             </Pressable>
           ))}
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: 10, width: 240 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: 10, flexGrow: 1, flexBasis: 200, maxWidth: 320 }}>
           <Ionicons name="search" size={15} color={colors.inkFaint} />
           <TextInput value={find} onChangeText={setFind} placeholder="Search in this folder…" placeholderTextColor={colors.inkFaint}
             style={{ flex: 1, paddingVertical: 8, fontSize: 13, color: colors.ink, outlineStyle: 'none' } as never} />
@@ -192,9 +196,9 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
 
       {/* Toolbar */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {mode === 'super' && <View style={{ width: 150 }}><Btn label="＋ Create folder" onPress={() => setCreating((c) => !c)} tone={creating ? 'ghost' : 'primary'} /></View>}
+        {mode === 'super' && <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="＋ Create folder" onPress={() => setCreating((c) => !c)} tone={creating ? 'ghost' : 'primary'} /></View>}
         {canUpload && (web
-          ? <View style={{ width: 150 }}><Btn label="Upload files" tone="ghost" onPress={pickFile} /></View>
+          ? <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="Upload files" tone="ghost" onPress={pickFile} /></View>
           : <Muted>Uploading is available from the web dashboard.</Muted>)}
         {here?.clientId && office ? <Muted>Files added here also appear in this client's eBinder.</Muted> : null}
       </View>
@@ -209,44 +213,55 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
 
       {/* File list */}
       <Card style={{ padding: 0 }}>
-        <ScrollView horizontal>
-          <View style={{ minWidth: 760, flex: 1 }}>
-            <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
-              {['Item name', 'eBinder', 'Size', 'Date modified', 'Updated by', ''].map((h, i) => (
-                <View key={i} style={{ flex: W[i], paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>
-              ))}
+        <View>
+          <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
+            <Head flex={W[0]} t="Item name" />
+            {showEb && <Head flex={W[1]} t="eBinder" />}
+            {showSize && <Head flex={W[2]} t="Size" />}
+            {showDate && <Head flex={W[3]} t="Date modified" />}
+            {showBy && <Head flex={W[4]} t="Updated by" />}
+            <Head flex={W[5]} t="" />
+          </View>
+          {shown.length === 0 && (
+            <View style={{ padding: 12 }}>
+              <Muted>{find.trim() ? 'Nothing here matches your search.' : mode === 'staff' && !here ? 'Nothing has been shared with you yet.' : 'This folder is empty.'}</Muted>
             </View>
-            {shown.length === 0 && (
-              <View style={{ padding: 12 }}>
-                <Muted>{find.trim() ? 'Nothing here matches your search.' : mode === 'staff' && !here ? 'Nothing has been shared with you yet.' : 'This folder is empty.'}</Muted>
-              </View>
-            )}
-            {shown.map((it) => (
-              <View key={it.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
-                <Pressable onPress={() => open(it)} accessibilityRole="button" style={{ flex: W[0], paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Ionicons name={it.type === 'folder' ? 'folder' : 'document-text-outline'} size={22} color={it.type === 'folder' ? '#E8B93C' : colors.inkSoft} />
-                  <Text numberOfLines={2} style={{ flex: 1, fontWeight: '600', color: colors.ink }}>{it.name}</Text>
-                </Pressable>
+          )}
+          {shown.map((it) => (
+            <View key={it.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
+              <Pressable onPress={() => open(it)} accessibilityRole="button" style={{ flex: W[0], minWidth: 0, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name={it.type === 'folder' ? 'folder' : 'document-text-outline'} size={22} color={it.type === 'folder' ? '#E8B93C' : colors.inkSoft} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text numberOfLines={2} style={{ fontWeight: '600', color: colors.ink }}>{it.name}</Text>
+                  {/* Details that no longer have a column fold under the name. */}
+                  {(!showSize || !showDate) && (
+                    <Text style={{ color: colors.inkFaint, fontSize: 12 }}>
+                      {[!showSize && it.type === 'file' ? fmtSize(it.size) : '', !showDate ? fmtDate(it) : ''].filter(Boolean).join(' · ')}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+              {showEb && (
                 <View style={{ flex: W[1], paddingRight: 8 }}>
                   {it.ebinderDocId ? <Tag text={`eBinder · ${it.ebinderFolder || 'General'}`} tone="blue" /> : it.clientId && it.type === 'folder' ? <Tag text="Client folder" tone="neutral" /> : null}
                 </View>
-                <View style={{ flex: W[2], paddingRight: 8 }}><Text style={{ color: colors.inkSoft }}>{it.type === 'file' ? fmtSize(it.size) : '–'}</Text></View>
-                <View style={{ flex: W[3], paddingRight: 8 }}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{fmtDate(it)}</Text></View>
-                <View style={{ flex: W[4], paddingRight: 8 }}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{it.ownerName || '–'}</Text></View>
-                <View style={{ flex: W[5], flexDirection: 'row', gap: 14, justifyContent: 'flex-end' }}>
-                  {mode === 'super' && (
-                    <>
-                      <Pressable onPress={() => startShare(it)} accessibilityRole="button">
-                        <Text style={{ color: colors.primary, fontWeight: '700' }}>{it.ownShares.length ? `Shared (${it.ownShares.length})` : 'Share'}</Text>
-                      </Pressable>
-                      <Pressable onPress={() => remove(it)} accessibilityRole="button"><Text style={{ color: colors.red, fontWeight: '700' }}>Delete</Text></Pressable>
-                    </>
-                  )}
-                </View>
+              )}
+              {showSize && <View style={{ flex: W[2], paddingRight: 8 }}><Text style={{ color: colors.inkSoft }}>{it.type === 'file' ? fmtSize(it.size) : '–'}</Text></View>}
+              {showDate && <View style={{ flex: W[3], paddingRight: 8 }}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{fmtDate(it)}</Text></View>}
+              {showBy && <View style={{ flex: W[4], paddingRight: 8 }}><Text style={{ color: colors.inkSoft, fontSize: 13 }}>{it.ownerName || '–'}</Text></View>}
+              <View style={{ flex: W[5], flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-end' }}>
+                {mode === 'super' && (
+                  <>
+                    <Pressable onPress={() => startShare(it)} accessibilityRole="button">
+                      <Text style={{ color: colors.primary, fontWeight: '700' }}>{it.ownShares.length ? `Shared (${it.ownShares.length})` : 'Share'}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => remove(it)} accessibilityRole="button"><Text style={{ color: colors.red, fontWeight: '700' }}>Delete</Text></Pressable>
+                  </>
+                )}
               </View>
-            ))}
-          </View>
-        </ScrollView>
+            </View>
+          ))}
+        </View>
       </Card>
 
       {sharing && (
@@ -271,7 +286,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   if (!wide) return main;
   return (
     <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
-      <Card style={{ width: 270, padding: 10 }}><Tree folders={allFolders} trail={trail} onGo={goTo} /></Card>
+      <Card style={{ width: 270, flexShrink: 0, padding: 10 }}><Tree folders={allFolders} trail={trail} onGo={goTo} /></Card>
       {main}
     </View>
   );
