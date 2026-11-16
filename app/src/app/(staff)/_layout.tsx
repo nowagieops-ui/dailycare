@@ -4,6 +4,7 @@ import { tabIcon } from '../../lib/tab-icon';
 
 // Tab bar follows the mockup (Home, Schedule, Clock, Tasks, Docs) plus the owner's two changes:
 // "Clock" is "Clock In", and a new "Notes" tab for the daily note.
+// Hidden from the tab bar, but still real pages with their own addresses. (`href: null` made them unreachable.)
 const HIDDEN = ['form-fill', 'chat', 'chat-thread', 'announcements', 'document', 'training', 'missed', 'calendar', 'files', 'settings', 'notifications'];
 
 export default function StaffTabs() {
@@ -15,7 +16,7 @@ export default function StaffTabs() {
       <Tabs.Screen name="tasks" options={{ title: 'Tasks', tabBarIcon: tabIcon('checkbox-outline') }} />
       <Tabs.Screen name="notes" options={{ title: 'Notes', tabBarIcon: tabIcon('create-outline') }} />
       <Tabs.Screen name="documents" options={{ title: 'Docs', tabBarIcon: tabIcon('document-text-outline') }} />
-      {HIDDEN.map((n) => <Tabs.Screen key={n} name={n} options={{ href: null }} />)}
+      {HIDDEN.map((n) => <Tabs.Screen key={n} name={n} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />)}
     </Tabs>
   );
 }
