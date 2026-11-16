@@ -32,8 +32,8 @@ export default function Login() {
         <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>DC</Text>
         </View>
-        <Text style={s.h1}>{web ? 'Daily Care Support Admin Console' : 'DSP Staff Portal'}</Text>
-        <Muted>{web ? 'Scheduling, staff & client records, compliance documents, attendance, and reporting for your office team.' : 'Sign in to see your shifts.'}</Muted>
+        <Text style={s.h1}>Daily Care Support</Text>
+        <Muted>Log in with the email and password your agency gave you.</Muted>
         {!firebaseConfigured && <Text style={{ color: colors.red }}>Backend not configured. Copy .env.example to .env.</Text>}
 
         <Text style={{ fontWeight: '600', color: colors.inkSoft, fontSize: 13 }}>Email</Text>
