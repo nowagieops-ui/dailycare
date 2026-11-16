@@ -33,7 +33,7 @@ export default function Login() {
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>DC</Text>
         </View>
         <Text style={s.h1}>Daily Care Support</Text>
-        <Muted>Log in with the email and password your agency gave you.</Muted>
+        <Muted>Log in to continue.</Muted>
         {!firebaseConfigured && <Text style={{ color: colors.red }}>Backend not configured. Copy .env.example to .env.</Text>}
 
         <Text style={{ fontWeight: '600', color: colors.inkSoft, fontSize: 13 }}>Email</Text>
