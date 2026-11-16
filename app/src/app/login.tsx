@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth';
@@ -29,10 +29,8 @@ export default function Login() {
   return (
     <SafeAreaView style={s.screen}>
       <View style={[s.content, { flex: 1, justifyContent: 'center' }]}>
-        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>DC</Text>
-        </View>
-        <Text style={s.h1}>Daily Care Support</Text>
+        <Image source={require('../../assets/logo.png')} accessibilityLabel="Daily Care Support Services" resizeMode="contain" style={{ width: 260, height: 62 }} />
+        <Text style={s.h1}>Welcome back</Text>
         <Muted>Log in to continue.</Muted>
         {!firebaseConfigured && <Text style={{ color: colors.red }}>Backend not configured. Copy .env.example to .env.</Text>}
 

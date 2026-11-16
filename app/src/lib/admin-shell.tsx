@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -67,14 +67,11 @@ function Nav({ path, onGo }: { path: string; onGo: () => void }) {
   };
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy, padding: 16, gap: 4 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 16 }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontWeight: '800' }}>DC</Text>
+      <View style={{ paddingBottom: 16, gap: 6 }}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 }}>
+          <Image source={require('../../assets/logo.png')} accessibilityLabel="Daily Care Support Services" resizeMode="contain" style={{ width: '100%', height: 44 }} />
         </View>
-        <View>
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Daily Care Support</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>Admin Console</Text>
-        </View>
+        <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, paddingLeft: 2 }}>Admin Console</Text>
       </View>
       <ScrollView contentContainerStyle={{ gap: 2 }}>
         {MAIN.map(link)}
