@@ -19,7 +19,7 @@ export default function AdminNotifications() {
   const open = useShiftsBetween(today, addDays(today, 14)).filter((x) => !x.staffId);
 
   const items: { key: string; mark: string; tone: 'amber' | 'red' | 'blue'; text: string; href: string; cta: string }[] = [
-    ...alerts.map((a) => ({ key: a.id, mark: '!', tone: 'red' as const, text: `${a.staffName || 'Staff'} left ${a.clientName}`, href: '/admin', cta: 'Review' })),
+    ...alerts.map((a) => ({ key: a.id, mark: '!', tone: 'red' as const, text: `${a.staffName || 'DSP'} left ${a.clientName}`, href: '/admin', cta: 'Review' })),
     ...pending.map((m) => ({ key: m.id, mark: '!', tone: 'amber' as const, text: `${m.staffName} reported a missed clock-in for ${m.clientName}`, href: '/admin/requests', cta: 'Review' })),
     ...creds.map((c) => ({ key: c.id, mark: '!', tone: 'amber' as const, text: `${c.staffName}'s ${c.title} ${daysLeft(c.expiresOn.toMillis()) < 0 ? 'has expired' : `expires in ${daysLeft(c.expiresOn.toMillis())} days`}`, href: '/admin/training', cta: 'View' })),
     ...open.map((x) => ({ key: x.id, mark: '＋', tone: 'blue' as const, text: `Open shift needs coverage — ${x.start.toDate().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${x.clientName}`, href: '/admin/scheduling', cta: 'Assign' })),

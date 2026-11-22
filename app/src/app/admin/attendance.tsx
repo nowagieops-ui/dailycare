@@ -40,7 +40,7 @@ export default function Attendance() {
   const W = [1.4, 2, 1.6, 1.6, 0.7, 1.2, 0.9];
 
   function exportCsv() {
-    const lines = [['date', 'staff', 'client', 'scheduled_start', 'scheduled_end', 'clock_in', 'clock_out', 'hours', 'flag', 'approved']];
+    const lines = [['date', 'dsp', 'client', 'scheduled_start', 'scheduled_end', 'clock_in', 'clock_out', 'hours', 'flag', 'approved']];
     for (const x of rows) {
       lines.push([
         x.start.toDate().toISOString().slice(0, 10), x.staffName ?? '', x.clientName, fmtTime(x.start.toMillis()), fmtTime(x.end.toMillis()),
@@ -74,7 +74,7 @@ export default function Attendance() {
         <ScrollView horizontal>
           <View style={{ minWidth: 860 }}>
             <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
-              {['Staff', 'Visit', 'Scheduled', 'Clocked in/out', 'Hours', 'Flag', ''].map((h, i) => <View key={i} style={{ flex: W[i], paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
+              {['DSP', 'Visit', 'Scheduled', 'Clocked in/out', 'Hours', 'Flag', ''].map((h, i) => <View key={i} style={{ flex: W[i], paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
             </View>
             {rows.length === 0 && <View style={{ padding: 12 }}><Muted>No shifts this week.</Muted></View>}
             {rows.map((x) => {

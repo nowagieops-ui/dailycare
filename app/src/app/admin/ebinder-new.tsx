@@ -102,12 +102,12 @@ export default function EBinderNew() {
         )}
         {audience[0] !== 'admin' && (
           <>
-            <Text style={{ fontWeight: '600' }}>Staff must sign it</Text>
+            <Text style={{ fontWeight: '600' }}>DSPs must sign it</Text>
             <Chips options={[{ value: 'yes', label: 'Yes, e-signature' }, { value: 'no', label: 'No, view only' }]} selected={sign} onToggle={(v) => setSign([v])} />
           </>
         )}
         <Btn label={pdf ? `PDF: ${pdf.name}` : 'Attach a PDF (optional)'} tone="ghost" onPress={pickPdf} />
-        <Muted>With a PDF attached, staff open the PDF and the text below is the acknowledgment shown beside it.</Muted>
+        <Muted>With a PDF attached, DSPs open the PDF and the text below is the acknowledgment shown beside it.</Muted>
         <Field label="Document text" value={body} onChangeText={setBody} multiline numberOfLines={8} style={[s.input, { minHeight: 160, paddingTop: 10 }]}
           placeholder="I, {{name}}, acknowledge that on {{date}} I received…" />
         <Muted>{'{{name}} and {{date}} are filled in with the signer\'s printed name and the signing date.'}</Muted>

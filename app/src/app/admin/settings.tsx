@@ -10,10 +10,10 @@ import { Btn, Card, Field, Muted, s, Screen, Tag } from '../../lib/ui';
 
 const ROLES: [string, string[]][] = [
   ['Super Admin', ['Full access', 'Full access', 'Full access', 'Full access', 'File manager']],
-  ['Office Admin', ['Full access', 'Staff & Family Staff only', 'Full access', 'Full access', '—']],
-  ['Staff / Family Staff', ['Own shifts', '—', 'Own documents', '—', 'Shared with them']],
+  ['Office Admin', ['Full access', 'DSPs & Family DSPs only', 'Full access', 'Full access', '—']],
+  ['DSP / Family DSP', ['Own shifts', '—', 'Own documents', '—', 'Shared with them']],
 ];
-const COLS = ['Role', 'Scheduling', 'Staff & Clients', 'eBinders', 'Reports', 'Files'];
+const COLS = ['Role', 'Scheduling', 'DSPs & Clients', 'eBinders', 'Reports', 'Files'];
 
 export default function AdminSettings() {
   const { profile, signOutUser } = useAuth();

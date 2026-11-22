@@ -12,7 +12,7 @@ interface Props { mode: 'super' | 'staff'; uid: string; role: Role; name?: strin
 
 const ROLES = [
   { value: roleKey('staff'), label: 'All staff' },
-  { value: roleKey('family_staff'), label: 'All Family Staff' },
+  { value: roleKey('family_staff'), label: 'All Family DSPs' },
   { value: roleKey('admin'), label: 'All admins' },
 ];
 

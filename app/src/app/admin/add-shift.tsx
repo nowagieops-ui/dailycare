@@ -6,6 +6,7 @@ import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useStaff } from '../../lib/admin-data';
 import { parseCsv, SHIFT_TEMPLATE, SHIFT_TEMPLATE_HEADERS } from '../../lib/csv';
 import { db } from '../../lib/firebase';
+import { feetToM, mToFeet } from '../../lib/geo';
 import { generateDates, parseLocalDate, shiftWindow, type Pattern, type WeekCycle } from '../../lib/recurrence';
 import type { Client, UserProfile } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
@@ -75,7 +76,7 @@ export default function AddShift() {
     const c = clients.find((x) => x.id === id);
     setClientId([id]);
     setAddress(c?.address ?? ''); setLoc(null);
-    setRadius(String(c?.radiusM ?? ''));
+    setRadius(c ? String(mToFeet(c.radiusM)) : '');
   }
 
   const dates = parseLocalDate(date)
@@ -95,7 +96,7 @@ export default function AddShift() {
         const w = shiftWindow(d, startT, endT);
         if (w) rows.push({
           staff: staffPick, client: clientPick, ...w, tasks: clientPick.defaultTasks,
-          phone: phone.trim(), address: address.trim(), radius: Number(radius) || clientPick.radiusM, ...(loc ?? {}),
+          phone: phone.trim(), address: address.trim(), radius: Number(radius) ? feetToM(Number(radius)) : clientPick.radiusM, ...(loc ?? {}),
         });
       }
       await saveShifts(rows);
@@ -155,15 +156,15 @@ export default function AddShift() {
     <Screen title="New shift">
       <Card>
         <Text style={s.h2}>New shift</Text>
-        <Text style={{ fontWeight: '600' }}>Staff</Text>
+        <Text style={{ fontWeight: '600' }}>DSP</Text>
         <Chips options={[{ value: 'open', label: 'Open shift (unassigned)' }, ...staff.map((u) => ({ value: u.id, label: u.name }))]} selected={staffId} onToggle={pickStaff} />
-        <Field label="Staff phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <Field label="DSP phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Text style={{ fontWeight: '600' }}>Client</Text>
         <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={pickClient} />
         <AddressPicker label="Shift location (defaults to the client's address)" value={address}
           confirmed={!!clientPick && (loc !== null || address.trim() === clientPick.address.trim())}
           onText={(t) => { setAddress(t); setLoc(null); }} onPick={(p) => { setAddress(p.address); setLoc({ lat: p.lat, lng: p.lng }); }} />
-        <Field label="Allowed radius (metres)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
+        <Field label="Allowed clock-in distance (feet)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
         <DateField label="Start date" value={date} onChange={setDate} />
         <TimeField label="Start time" value={startT} onChange={setStartT} />
         <TimeField label="End time" value={endT} onChange={setEndT} />
@@ -185,7 +186,7 @@ export default function AddShift() {
         )}
         {pattern === 'alternating' && (
           <>
-            <Text style={{ fontWeight: '600' }}>This staff member works</Text>
+            <Text style={{ fontWeight: '600' }}>This DSP works</Text>
             <Chips<WeekCycle>
               options={[{ value: 'odd', label: 'Weeks 1, 3, 5…' }, { value: 'even', label: 'Weeks 2, 4, 6…' }]}
               selected={[cycle]} onToggle={setCycle}

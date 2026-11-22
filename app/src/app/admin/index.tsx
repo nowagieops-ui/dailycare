@@ -27,7 +27,7 @@ export default function Dashboard() {
   const activity: Activity[] = [
     ...shifts.filter((x) => x.clockInAt).map((x): Activity => ({
       at: x.clockInAt!.toMillis(), tone: 'green', mark: '✓',
-      text: `${x.staffName || 'Staff'} clocked in for ${x.clientName} — ${x.serviceLine}`,
+      text: `${x.staffName || 'DSP'} clocked in for ${x.clientName} — ${x.serviceLine}`,
     })),
     ...missed.map((m): Activity => ({
       at: m.createdAt.toMillis(), tone: 'amber', mark: '!',
@@ -36,14 +36,14 @@ export default function Dashboard() {
   ].sort((a, b) => b.at - a.at).slice(0, 8);
 
   const quick: [string, string][] = [
-    ['+ Add staff member', '/admin/add-staff'], ['Generate admin onboarding code', '/admin/add-staff'],
+    ['+ Add DSP', '/admin/add-staff'], ['Generate admin onboarding code', '/admin/add-staff'],
     ['+ Create new shift', '/admin/scheduling'], ['Upload to eBinder', '/admin/ebinders'],
   ];
 
   return (
     <Screen title="Dashboard">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Staff on shift now" value={onShift} /></View>
+        <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="DSPs on shift now" value={onShift} /></View>
         <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Open shifts this week" value={open} /></View>
         <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Credentials expiring (90 days)" value={expiring} /></View>
         <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Missed clock-ins this week" value={missedWeek} /></View>
@@ -51,11 +51,11 @@ export default function Dashboard() {
 
       {alerts.length > 0 && (
         <Card style={{ borderColor: colors.red }}>
-          <Text style={s.h2}>Staff outside the client's location</Text>
+          <Text style={s.h2}>DSPs outside the client's location</Text>
           {alerts.map((a) => (
             <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <Pill text="Left site" tone="red" />
-              <Text style={{ flex: 1, minWidth: 180, color: colors.ink }}>{a.staffName || 'Staff member'} left {a.clientName} at {fmtTime(a.at.toMillis())}</Text>
+              <Text style={{ flex: 1, minWidth: 180, color: colors.ink }}>{a.staffName || 'DSP'} left {a.clientName} at {fmtTime(a.at.toMillis())}</Text>
               <View style={{ width: 150 }}><Btn label="Mark resolved" tone="ghost" onPress={() => updateDoc(doc(db, 'alerts', a.id), { resolved: true })} /></View>
             </View>
           ))}

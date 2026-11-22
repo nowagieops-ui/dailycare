@@ -36,7 +36,7 @@ export default function ClientDetail() {
   const folders = [...FOLDERS, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !(FOLDERS as readonly string[]).includes(f)).sort()];
   const st = reviewStatus(c.nextReview);
   const visits = shifts.filter((x) => x.status === 'completed').sort((a, b) => b.start.toMillis() - a.start.toMillis());
-  const team = [...new Map(shifts.filter((x) => x.staffId).map((x) => [x.staffId, x.staffName || 'Staff'])).entries()];
+  const team = [...new Map(shifts.filter((x) => x.staffId).map((x) => [x.staffId, x.staffName || 'DSP'])).entries()];
 
   async function save() {
     await updateDoc(doc(db, 'clients', c!.id), {
@@ -126,7 +126,7 @@ export default function ClientDetail() {
       {tab === 'Care Team' && (
         <Card>
           <Text style={s.h2}>Care team</Text>
-          {team.length === 0 && <Muted>No staff scheduled for this client recently.</Muted>}
+          {team.length === 0 && <Muted>No DSPs scheduled for this client recently.</Muted>}
           {team.map(([sid, name]) => (
             <Pressable key={sid} onPress={() => router.push({ pathname: '/admin/staff-detail', params: { id: sid } } as never)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>

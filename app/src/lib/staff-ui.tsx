@@ -26,7 +26,7 @@ export function BackButton({ label = 'Back', fallback = '/' }: { label?: string;
 
 export const ROLE_LABEL: Record<string, string> = {
   staff: 'Direct Support Professional',
-  family_staff: 'Family Staff',
+  family_staff: 'Family DSP',
   admin: 'Office Admin',
   super_admin: 'Super Admin',
   case_manager: 'Case Manager',

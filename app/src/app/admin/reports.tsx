@@ -65,9 +65,9 @@ export default function Reports() {
 
   return (
     <Screen title="Reports">
-      <Muted>Last 6 weeks. Attendance counts a shift as attended when the staff member clocked in.</Muted>
+      <Muted>Last 6 weeks. Attendance counts a shift as attended when the DSP clocked in.</Muted>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Active staff" value={staff.length} /></View>
+        <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Active DSPs" value={staff.length} /></View>
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. attendance rate" value={show(avg(rows.map((r) => r.attendance)))} /></View>
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. on-time clock-in" value={show(avg(weeks))} /></View>
         <View style={{ minWidth: 180, flexGrow: 1 }}><StatTile label="Avg. eBinder completion" value={show(avg(rows.map((r) => r.ebinder)))} /></View>
@@ -76,9 +76,9 @@ export default function Reports() {
       </View>
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <View style={{ padding: 12 }}><Text style={s.h2}>All staff — report summary</Text><Muted>Select a staff member to see their full profile</Muted></View>
+        <View style={{ padding: 12 }}><Text style={s.h2}>All DSPs — report summary</Text><Muted>Select a DSP to see their full profile</Muted></View>
         <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
-          {['Staff', 'Attendance', 'eBinder', 'Training', 'Credentials', 'Overall', ''].map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
+          {['DSP', 'Attendance', 'eBinder', 'Training', 'Credentials', 'Overall', ''].map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
         </View>
         {rows.map(({ u, attendance, credentials, ebinder, training }) => (
           <View key={u.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
@@ -127,9 +127,9 @@ export default function Reports() {
       </Card>
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <View style={{ padding: 12 }}><Text style={s.h2}>Staff utilization this week</Text><Muted>Worked hours against scheduled hours, for shifts already finished.</Muted></View>
+        <View style={{ padding: 12 }}><Text style={s.h2}>DSP utilization this week</Text><Muted>Worked hours against scheduled hours, for shifts already finished.</Muted></View>
         <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
-          {['Staff', 'Scheduled hrs', 'Worked hrs', 'Utilization'].map((h, i) => <View key={i} style={cell(i === 3 ? 3 : i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
+          {['DSP', 'Scheduled hrs', 'Worked hrs', 'Utilization'].map((h, i) => <View key={i} style={cell(i === 3 ? 3 : i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
         </View>
         {util.map(({ u, sh, wh, pct: p }) => (
           <View key={u.id} style={{ flexDirection: 'row', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>

@@ -24,7 +24,7 @@ export default function StaffDetail() {
   const [tab, setTab] = useState<(typeof TABS)[number]>('Profile');
   const [busy, setBusy] = useState(false);
 
-  if (!user) return <Screen title="Staff"><Muted>Loading…</Muted></Screen>;
+  if (!user) return <Screen title="DSP"><Muted>Loading…</Muted></Screen>;
   const canEdit = profile?.role === 'super_admin' || (profile?.role === 'admin' && (user.role === 'staff' || user.role === 'family_staff'));
   const upcoming = shifts.filter((x) => x.start.toMillis() >= today.getTime()).sort((a, b) => a.start.toMillis() - b.start.toMillis());
   const past = shifts.filter((x) => x.start.toMillis() < today.getTime() + 86400000).sort((a, b) => b.start.toMillis() - a.start.toMillis());
@@ -38,7 +38,7 @@ export default function StaffDetail() {
   );
 
   return (
-    <Screen title="Staff">
+    <Screen title="DSP">
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>{initials(user.name)}</Text>

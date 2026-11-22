@@ -29,7 +29,7 @@ export default function Announcements() {
         <Text style={s.h2}>New announcement</Text>
         <Field label="Title" value={title} onChangeText={setTitle} />
         <Field label="Message" value={body} onChangeText={setBody} multiline style={[s.input, { minHeight: 100, textAlignVertical: 'top', paddingTop: 12 }]} />
-        <Btn label="Post to all staff" onPress={post} busy={busy} disabled={!title.trim() || !body.trim()} />
+        <Btn label="Post to all DSPs" onPress={post} busy={busy} disabled={!title.trim() || !body.trim()} />
       </Card>
       {items.map((a) => (
         <Card key={a.id}>

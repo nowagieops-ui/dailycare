@@ -15,7 +15,7 @@ type Item = { href: string; label: string; icon: keyof typeof Ionicons.glyphMap;
 const MAIN: Item[] = [
   { href: '/admin', label: 'Dashboard', icon: 'grid-outline' },
   { href: '/admin/scheduling', label: 'Scheduling', icon: 'calendar-outline' },
-  { href: '/admin/staff', label: 'Staff', icon: 'people-outline' },
+  { href: '/admin/staff', label: 'DSP', icon: 'people-outline' },
   { href: '/admin/clients', label: 'Clients', icon: 'business-outline' },
   { href: '/admin/ebinders', label: 'eBinders', icon: 'folder-open-outline' },
   { href: '/admin/forms', label: 'PDF Forms', icon: 'create-outline' },
@@ -33,8 +33,8 @@ const MORE: Item[] = [
 ];
 
 const TITLES: Record<string, string> = {
-  '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/form-edit': 'PDF Form', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'Staff detail','/admin/audit': 'Audit log',
-  '/admin/add-staff': 'Add staff member', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
+  '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/form-edit': 'PDF Form', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'DSP detail','/admin/audit': 'Audit log',
+  '/admin/add-staff': 'Add DSP', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
 };
 // Pages opened from a section keep that section lit in the sidebar and go back to it.
 const PARENT: Record<string, string> = {

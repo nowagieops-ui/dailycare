@@ -80,7 +80,7 @@ export default function Scheduling() {
         <ScrollView horizontal>
           <View>
             <View style={{ flexDirection: 'row', backgroundColor: colors.bg }}>
-              <View style={{ width: 130, padding: 10 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>Staff</Text></View>
+              <View style={{ width: 130, padding: 10 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>DSP</Text></View>
               {days.map((d) => (
                 <View key={d.toISOString()} style={{ width: COL, padding: 10 }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: sameDay(d, todayStart) ? colors.primary : colors.inkSoft }}>

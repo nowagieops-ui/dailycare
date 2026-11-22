@@ -4,6 +4,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { AddressPicker } from '../../components/AddressPicker';
 import { DateField } from '../../components/DateTimeFields';
 import { db } from '../../lib/firebase';
+import { feetToM } from '../../lib/geo';
 import { SERVICE_LINES } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
@@ -15,18 +16,18 @@ export default function AddClient() {
   const [address, setAddress] = useState('');
   // The map point comes only from a picked address search result; it is never typed in.
   const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
-  const [radius, setRadius] = useState('150');
+  const [radius, setRadius] = useState('25');
   const [lines, setLines] = useState<string[]>([]);
   const [tasks, setTasks] = useState('');
   const [msg, setMsg] = useState('');
 
   const radN = Number(radius);
-  const valid = name.trim() && address.trim() && lines.length > 0 && loc !== null && radN >= 50 && radN <= 2000;
+  const valid = name.trim() && address.trim() && lines.length > 0 && loc !== null && radN >= 10 && radN <= 1000;
 
   async function save() {
     if (!loc) return;
     await addDoc(collection(db, 'clients'), {
-      name: name.trim(), address: address.trim(), lat: loc.lat, lng: loc.lng, radiusM: radN, serviceLines: lines,
+      name: name.trim(), address: address.trim(), lat: loc.lat, lng: loc.lng, radiusM: feetToM(radN), serviceLines: lines,
       ...(dob ? { dob } : {}), contactName: contactName.trim(), contactPhone: contactPhone.trim(),
       defaultTasks: tasks.split(/[;\n]/).map((t) => t.trim()).filter(Boolean),
     });
@@ -44,7 +45,7 @@ export default function AddClient() {
         <AddressPicker label="Address" value={address} confirmed={loc !== null}
           onText={(t) => { setAddress(t); setLoc(null); }}
           onPick={(p) => { setAddress(p.address); setLoc({ lat: p.lat, lng: p.lng }); }} />
-        <Field label="Allowed radius in metres (50–2000)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
+        <Field label="Allowed clock-in distance in feet (10–1000, default 25)" value={radius} onChangeText={setRadius} keyboardType="number-pad" />
         <Text style={{ fontWeight: '600' }}>Service lines (pick all that apply)</Text>
         <Chips
           options={SERVICE_LINES.map((l) => ({ value: l as string, label: l }))}

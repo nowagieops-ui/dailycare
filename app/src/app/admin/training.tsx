@@ -49,13 +49,13 @@ export default function AdminTraining() {
     <Screen title="Training & Credentials">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Agency-wide completion" value={total ? `${Math.round((done / total) * 100)}%` : '—'} /></View>
-        <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Staff with overdue training" value={overdue} /></View>
+        <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="DSPs with overdue training" value={overdue} /></View>
         <View style={{ minWidth: 200, flexGrow: 1 }}><StatTile label="Credentials expiring in 30 days" value={soon} /></View>
       </View>
 
       <Card>
         <Text style={s.h2}>Agency-wide required training</Text>
-        <Muted>Every active staff member must hold a current credential with the same name. Add it for a person below to mark it complete.</Muted>
+        <Muted>Every active DSP must hold a current credential with the same name. Add it for a person below to mark it complete.</Muted>
         {required.map((t) => {
           const n = staff.filter((u) => hasTraining(rows, u.id, t)).length;
           return (
@@ -71,9 +71,9 @@ export default function AdminTraining() {
       </Card>
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <View style={{ padding: 12 }}><Text style={s.h2}>Staff completion by training band</Text><Muted>Bands: Competency · MD DDA (state-mandated) · Agency Specific</Muted></View>
+        <View style={{ padding: 12 }}><Text style={s.h2}>DSP completion by training band</Text><Muted>Bands: Competency · MD DDA (state-mandated) · Agency Specific</Muted></View>
         <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
-          {['Staff', ...BANDS, 'Overall'].map((h, i) => <View key={h} style={{ flex: W[i], paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
+          {['DSP', ...BANDS, 'Overall'].map((h, i) => <View key={h} style={{ flex: W[i], paddingRight: 8 }}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
         </View>
         {staff.map((u) => {
           const per = BANDS.map((b) => { const r = required.filter((t) => t.band === b); return [r.filter((t) => hasTraining(rows, u.id, t)).length, r.length] as const; });
@@ -100,7 +100,7 @@ export default function AdminTraining() {
         <Field label="Name (e.g. CPR, COVID-19 Infection Control)" value={title} onChangeText={setTitle} />
         <DateField label="Expires on" value={exp} onChange={setExp} />
         <Btn label="Save" onPress={add} disabled={!person || !title.trim() || !expDate} />
-        <Muted>Staff and admins are reminded at 3 months, 2 months, 1 month and 1 week, then daily until the date, then weekly if it lapses.</Muted>
+        <Muted>DSPs and admins are reminded at 3 months, 2 months, 1 month and 1 week, then daily until the date, then weekly if it lapses.</Muted>
       </Card>
 
       <Card>

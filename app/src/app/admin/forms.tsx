@@ -10,7 +10,7 @@ export default function Forms() {
   const templates = useTemplates();
   return (
     <Screen title="PDF Forms">
-      <Muted>Upload a PDF your staff fill in. The app turns it into a form, and staff answers are written back into a finished PDF.</Muted>
+      <Muted>Upload a PDF your DSPs fill in. The app turns it into a form, and DSP answers are written back into a finished PDF.</Muted>
       <View style={{ alignSelf: 'flex-start', width: 200 }}><Btn label="+ Add form from PDF" onPress={() => router.push('/admin/form-edit' as never)} /></View>
       {templates.length === 0 && <Muted>No forms yet.</Muted>}
       {templates.map((t) => (

@@ -74,7 +74,7 @@ export default function Missed() {
         {label('Missed Clock', true)}
         <Chips<Missed> options={MISSED} selected={kind} onToggle={(v) => setKind([v])} />
         <DateField label="Date *" value={date} onChange={(v) => { setDate(v); setPick([]); }} />
-        {date && dayShifts.length === 0 && <Muted>You have no shift on that date in the last 14 days. Pick the day of the shift you missed the clock for.</Muted>}
+        {date && dayShifts.length === 0 && <Muted>You have no shift on that date.</Muted>}
         {dayShifts.length > 1 && (
           <>
             {label('Which shift?', true)}

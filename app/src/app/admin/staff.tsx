@@ -10,7 +10,7 @@ import { Btn, Card, fmtDay, fmtTime, initials, Muted, Screen, Tag } from '../../
 import { addDays, startOfDay } from '../../lib/week';
 
 export const ROLE_LABEL: Record<Role, string> = {
-  staff: 'DSP', family_staff: 'Family Staff', admin: 'Office Admin', super_admin: 'Super Admin', case_manager: 'Case Manager',
+  staff: 'DSP', family_staff: 'Family DSP', admin: 'Office Admin', super_admin: 'Super Admin', case_manager: 'Case Manager',
 };
 const W = [2.2, 1.2, 1, 1.4, 1.6, 0.8];
 
@@ -34,16 +34,16 @@ export default function StaffDirectory() {
   const head = ['Name', 'Role', 'Status', 'Certifications', 'Last clock-in', ''];
 
   return (
-    <Screen title="Staff Directory">
+    <Screen title="DSP Directory">
       {canEdit && <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <View style={{ width: 200 }}><Btn label="Generate admin code" tone="ghost" onPress={() => router.push('/admin/add-staff' as never)} /></View>
-        <View style={{ width: 160 }}><Btn label="+ Add Staff" onPress={() => router.push('/admin/add-staff' as never)} /></View>
+        <View style={{ width: 160 }}><Btn label="+ Add DSP" onPress={() => router.push('/admin/add-staff' as never)} /></View>
       </View>}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <View style={{ flexDirection: 'row', padding: 12, backgroundColor: colors.bg }}>
           {head.map((h, i) => <View key={i} style={cell(i)}><Text style={{ fontSize: 12, fontWeight: '700', color: colors.inkSoft }}>{h}</Text></View>)}
         </View>
-        {staff.length === 0 && <View style={{ padding: 12 }}><Muted>No staff yet.</Muted></View>}
+        {staff.length === 0 && <View style={{ padding: 12 }}><Muted>No DSPs yet.</Muted></View>}
         {staff.map((u) => (
           <Pressable key={u.id} onPress={() => router.push({ pathname: '/admin/staff-detail', params: { id: u.id } } as never)}
             style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, borderTopColor: colors.line }}>

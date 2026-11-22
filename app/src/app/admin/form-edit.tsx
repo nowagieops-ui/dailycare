@@ -156,7 +156,7 @@ export default function FormEdit() {
         <Muted>Leave all empty to show it on every visit.</Muted>
         <Chips options={SERVICE_LINES.map((l) => ({ value: l as string, label: l }))} selected={lines} onToggle={(v) => setLines((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v]))} />
         <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientIds} onToggle={(v) => setClientIds((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v]))} />
-        <Chips options={[{ value: 'req', label: 'Staff must complete it before clocking out' }]} selected={required ? ['req'] : []} onToggle={() => setRequired((r) => !r)} />
+        <Chips options={[{ value: 'req', label: 'DSPs must complete it before clocking out' }]} selected={required ? ['req'] : []} onToggle={() => setRequired((r) => !r)} />
       </Card>
 
       {err ? <Text style={{ color: colors.red }}>{err}</Text> : null}

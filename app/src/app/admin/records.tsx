@@ -26,7 +26,7 @@ export default function Records() {
 
   return (
     <Screen title="Visit records">
-      <Muted>Each completed shift fills a record from the staff member's checklist, daily note and clock times.</Muted>
+      <Muted>Each completed shift fills a record from the DSP's checklist, daily note and clock times.</Muted>
       {rows.map((sh) => (
         <Card key={sh.id}>
           <Text style={s.h2}>{sh.clientName} · {fmtDay(sh.start.toMillis())}</Text>

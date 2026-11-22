@@ -11,7 +11,7 @@ import type { Role } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
 const ROLE_LABEL: Record<Role, string> = {
-  staff: 'Staff', family_staff: 'Family Staff', admin: 'Admin', super_admin: 'Super Admin', case_manager: 'Case Manager',
+  staff: 'DSP', family_staff: 'Family DSP', admin: 'Admin', super_admin: 'Super Admin', case_manager: 'Case Manager',
 };
 
 /** A second Firebase app instance, so creating an account doesn't sign the admin out. */
@@ -66,16 +66,16 @@ export default function AddStaff() {
   }
 
   return (
-    <Screen title="Add staff member">
+    <Screen title="Add DSP">
       <Card>
-        <Text style={s.h2}>Staff details</Text>
+        <Text style={s.h2}>DSP details</Text>
         <Field label="Full name" value={name} onChangeText={setName} />
         <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
         <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <DateField label="Start date (optional)" value={startDate} onChange={setStartDate} optional />
         <Text style={{ fontWeight: '600' }}>Role</Text>
         <Chips options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} selected={[role]} onToggle={setRole} />
-        {role === 'family_staff' && <Muted>Family Staff work like regular staff but under a specific waiver.</Muted>}
+        {role === 'family_staff' && <Muted>Family DSPs work like regular DSPs but under a specific waiver.</Muted>}
         <Btn label="Add and email invite" onPress={create} busy={busy} disabled={!name.trim() || !email.includes('@')} />
         {msg ? <Muted>{msg}</Muted> : null}
       </Card>

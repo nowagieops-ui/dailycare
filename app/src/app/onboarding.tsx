@@ -37,7 +37,7 @@ export default function Onboarding() {
     <SafeAreaView style={s.screen}>
       <ScrollView contentContainerStyle={[s.content, { justifyContent: 'center', flexGrow: 1 }]}>
         <Text style={{ color: colors.inkFaint, fontWeight: '700', fontSize: 12 }}>Step 1 of 3 · Admin code</Text>
-        <Text style={s.h1}>New Staff Onboarding</Text>
+        <Text style={s.h1}>New DSP Onboarding</Text>
         <Muted>Enter the onboarding code your supervisor gave you, then set up your account.</Muted>
         {label('Admin onboarding code')}
         <TextInput style={s.input} autoCapitalize="characters" autoCorrect={false} placeholder="DCS-XXXX-XXXX" value={code} onChangeText={setCode} />
