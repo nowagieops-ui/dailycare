@@ -5,13 +5,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useClients, useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
-import { attachPdf, Audience, audienceLabel, FOLDERS, logEvent, type EDoc, type Folder } from '../../lib/ebinder';
+import { attachPdf, Audience, audienceLabel, logEvent, useFolderTemplate, type EDoc, type Folder } from '../../lib/ebinder';
 import { mirrorEbinderDoc } from '../../lib/drive';
 import { db } from '../../lib/firebase';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
 /** New document, or (with ?id=) a new version of an existing one. */
 export default function EBinderNew() {
+  const template = useFolderTemplate();
   const { id, clientId: presetClient } = useLocalSearchParams<{ id?: string; clientId?: string }>();
   const { profile } = useAuth();
   const staff = useStaff().filter((u) => (u.role === 'staff' || u.role === 'family_staff') && u.active);
@@ -90,7 +91,7 @@ export default function EBinderNew() {
         <Text style={s.h2}>{id ? `New version (v${version + 1})` : 'Document details'}</Text>
         <Field label="Title" value={title} onChangeText={setTitle} />
         <Text style={{ fontWeight: '600' }}>Folder</Text>
-        <Chips<Folder> options={[...FOLDERS, ...(FOLDERS.includes(folder[0] as never) ? [] : [folder[0]])].map((f) => ({ value: f, label: f }))} selected={folder} onToggle={(v) => setFolder([v])} />
+        <Chips<Folder> options={[...template, ...(template.includes(folder[0]) ? [] : [folder[0]])].map((f) => ({ value: f, label: f }))} selected={folder} onToggle={(v) => setFolder([v])} />
         <Text style={{ fontWeight: '600' }}>Client this belongs to (optional)</Text>
         <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={(v) => setClientId((c) => (c[0] === v ? [] : [v]))} />
         {clientId[0] ? <Muted>It will also appear in this client's folder in the file manager.</Muted> : null}

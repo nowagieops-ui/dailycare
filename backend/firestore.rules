@@ -184,19 +184,47 @@ service cloud.firestore {
 
     // Team chat: only members read or write. Messages are create-only and server-timestamped.
     match /chats/{id} {
-      allow read: if isActive() && request.auth.uid in resource.data.members;
+      // Super admins can read every conversation for oversight.
+      allow read: if isActive() && (request.auth.uid in resource.data.members || isSuper());
+      // DSPs (staff, family staff) can only open a 1:1 chat with an office user, never with each other.
       allow create: if isActive() && request.auth.uid in request.resource.data.members
-                    && request.resource.data.members.size() <= 20;
+                    && request.resource.data.members.size() <= 20
+                    && (isOffice() || (request.resource.data.members.size() == 2
+                        && get(/databases/$(database)/documents/directory/$(request.resource.data.members[0] == request.auth.uid ? request.resource.data.members[1] : request.resource.data.members[0])).data.role in ['admin', 'super_admin', 'case_manager']));
       allow update: if isActive() && request.auth.uid in resource.data.members
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastText', 'lastAt']);
       match /messages/{mid} {
-        allow read: if isActive() && request.auth.uid in get(/databases/$(database)/documents/chats/$(id)).data.members;
+        allow read: if isActive() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(id)).data.members || isSuper());
         allow create: if isActive() && request.auth.uid in get(/databases/$(database)/documents/chats/$(id)).data.members
                       && request.resource.data.senderId == request.auth.uid
                       && request.resource.data.at == request.time
                       && request.resource.data.text is string && request.resource.data.text.size() <= 2000;
         allow update, delete: if false;
       }
+    }
+
+    // Residential units (homes and apartments). Everyone signed in reads them; the office manages them.
+    // DSPs log safety checks, report maintenance and post unit messages, always as themselves.
+    match /units/{id} {
+      allow read: if isActive();
+      allow write: if isOffice();
+    }
+    match /unitLogs/{id} {
+      allow read: if isActive();
+      allow create: if isActive() && request.resource.data.byId == request.auth.uid && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+    match /unitRequests/{id} {
+      allow read: if isActive();
+      allow create: if isActive() && request.resource.data.byId == request.auth.uid && request.resource.data.status == 'open';
+      allow update: if isOffice();
+      allow delete: if false;
+    }
+    match /unitPosts/{id} {
+      allow read: if isActive();
+      allow create: if isActive() && request.resource.data.byId == request.auth.uid && request.resource.data.at == request.time;
+      allow delete: if isOffice();
+      allow update: if false;
     }
 
     // Required-training catalog: everyone signed in reads it; admins manage it.

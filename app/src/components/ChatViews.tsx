@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../lib/auth';
-import { chatTitle, sendMessage, startChat, useChats, useMessages, usePeople, type Chat } from '../lib/chat';
+import { canMessage, chatTitle, isOfficeRole, sendMessage, startChat, useAllChats, useChat, useChats, useMessages, usePeople, type Chat } from '../lib/chat';
 import { useAnnouncements } from '../lib/shifts';
 import { colors } from '../lib/theme';
 import { Btn, Card, Chips, fmtDay, fmtTime, initials, Muted, s } from '../lib/ui';
@@ -12,7 +12,9 @@ const when = (ms: number) => (Date.now() - ms < 86400000 ? fmtTime(ms) : fmtDay(
 export function ChatList({ onOpen, onAnnouncements }: { onOpen: (id: string) => void; onAnnouncements: () => void }) {
   const { profile } = useAuth();
   const chats = useChats(profile?.uid);
-  const people = usePeople().filter((p) => p.id !== profile?.uid);
+  const people = usePeople().filter((p) => p.id !== profile?.uid && (!profile || canMessage(profile.role, p.role)));
+  const allChats = useAllChats(profile?.role === 'super_admin');
+  const [showAll, setShowAll] = useState(false);
   const latest = useAnnouncements()[0];
   const [composing, setComposing] = useState(false);
   const [pick, setPick] = useState<string[]>([]);
@@ -30,7 +32,13 @@ export function ChatList({ onOpen, onAnnouncements }: { onOpen: (id: string) => 
         <Card>
           <Text style={s.h2}>Who is this message for?</Text>
           <Chips options={people.map((p) => ({ value: p.id, label: p.name }))} selected={pick}
-            onToggle={(v) => setPick((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v]))} />
+            onToggle={(v) => setPick((c) => {
+              if (c.includes(v)) return c.filter((x) => x !== v);
+              const next = [...c, v];
+              // A group with a DSP would let DSPs message each other, so DSPs are messaged one at a time.
+              return next.length > 1 && next.some((id) => !isOfficeRole(people.find((p) => p.id === id)?.role ?? 'staff')) ? [v] : next;
+            })} />
+          {!isOfficeRole(profile.role) ? <Muted>You can message the office team.</Muted> : <Muted>Pick one DSP, or several office team members for a group.</Muted>}
           <Btn label={pick.length > 1 ? 'Start group chat' : 'Start chat'} onPress={go} disabled={pick.length === 0} />
         </Card>
       )}
@@ -60,13 +68,27 @@ export function ChatList({ onOpen, onAnnouncements }: { onOpen: (id: string) => 
           </Pressable>
         );
       })}
+      {profile.role === 'super_admin' && (
+        <View style={{ gap: 10, marginTop: 8 }}>
+          <Btn label={showAll ? 'Hide all agency conversations' : `Oversight: all agency conversations (${allChats.length})`} tone="ghost" onPress={() => setShowAll((v) => !v)} />
+          {showAll && allChats.map((c) => (
+            <Pressable key={c.id} onPress={() => onOpen(c.id)}>
+              <Card>
+                <Text numberOfLines={1} style={{ fontWeight: '700', color: colors.ink }}>{c.members.map((m) => c.names[m] ?? 'Someone').join(' ↔ ')}</Text>
+                <Text numberOfLines={1} style={{ color: colors.inkSoft, fontSize: 13 }}>{c.lastText ?? 'No messages yet'}{c.lastAt ? ` · ${when(c.lastAt.toMillis())}` : ''}</Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 export function ChatThread({ chatId }: { chatId: string }) {
   const { profile } = useAuth();
-  const chat = useChats(profile?.uid).find((c) => c.id === chatId);
+  const chat = useChat(chatId);
+  const member = !!chat && !!profile && chat.members.includes(profile.uid);
   const msgs = useMessages(chatId);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -80,7 +102,7 @@ export function ChatThread({ chatId }: { chatId: string }) {
 
   return (
     <View style={{ gap: 10 }}>
-      <Text style={s.h1}>{chat ? chatTitle(chat, profile.uid) : 'Chat'}</Text>
+      <Text style={s.h1}>{chat ? (member ? chatTitle(chat, profile.uid) : chat.members.map((m) => chat.names[m] ?? 'Someone').join(' ↔ ')) : 'Chat'}</Text>
       <Muted>Do not put client names or health details in chat unless they are needed for care.</Muted>
       {msgs.map((m) => {
         const mine = m.senderId === profile.uid;
@@ -94,11 +116,13 @@ export function ChatThread({ chatId }: { chatId: string }) {
           </View>
         );
       })}
+      {!member && chat ? <Muted>Viewing as super admin (read only).</Muted> : (
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
         <TextInput value={text} onChangeText={setText} placeholder="Message" placeholderTextColor={colors.inkFaint} maxLength={2000} onSubmitEditing={send}
           style={[s.input, { flex: 1 }]} />
         <View style={{ width: 90 }}><Btn label="Send" onPress={send} busy={busy} disabled={!text.trim()} /></View>
       </View>
+      )}
     </View>
   );
 }

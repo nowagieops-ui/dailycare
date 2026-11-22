@@ -27,6 +27,7 @@ const MAIN: Item[] = [
 const MORE: Item[] = [
   { href: '/admin/chat', label: 'Team Chat', icon: 'chatbubbles-outline' },
   { href: '/admin/announcements', label: 'Announcements', icon: 'megaphone-outline' },
+  { href: '/admin/units', label: 'Residential units', icon: 'home-outline' },
   { href: '/admin/requests', label: 'Missed clock-ins', icon: 'alert-circle-outline' },
   { href: '/admin/records', label: 'Visit records', icon: 'document-text-outline' },
   { href: '/admin/files', label: 'File manager', icon: 'file-tray-full-outline', superOnly: true },
@@ -34,12 +35,12 @@ const MORE: Item[] = [
 
 const TITLES: Record<string, string> = {
   '/admin/notifications': 'Notifications', '/admin/search': 'Search', '/admin/form-edit': 'PDF Form', '/admin/chat-thread': 'Team Chat', '/admin/ebinder-new': 'Upload document', '/admin/document-detail': 'Compliance Documents', '/admin/add-shift': 'New shift', '/admin/staff-detail': 'DSP detail','/admin/audit': 'Audit log',
-  '/admin/add-staff': 'Add DSP', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
+  '/admin/add-staff': 'Add DSP', '/admin/unit-detail': 'Residential Unit', '/admin/add-client': 'New Client Intake', '/admin/client-detail': 'Client detail',
 };
 // Pages opened from a section keep that section lit in the sidebar and go back to it.
 const PARENT: Record<string, string> = {
   '/admin/add-shift': '/admin/scheduling', '/admin/add-staff': '/admin/staff', '/admin/staff-detail': '/admin/staff',
-  '/admin/add-client': '/admin/clients', '/admin/client-detail': '/admin/clients',
+  '/admin/unit-detail': '/admin/units', '/admin/add-client': '/admin/clients', '/admin/client-detail': '/admin/clients',
   '/admin/ebinder-new': '/admin/ebinders', '/admin/document-detail': '/admin/ebinders',
   '/admin/form-edit': '/admin/forms', '/admin/chat-thread': '/admin/chat', '/admin/audit': '/admin/settings',
   '/admin/notifications': '/admin', '/admin/search': '/admin',

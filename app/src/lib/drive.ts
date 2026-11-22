@@ -85,10 +85,10 @@ export async function ensureClientFolder(client: Pick<Client, 'id' | 'name'>, fo
 }
 
 /** Makes sure each client has a folder with the standard eBinder subfolders. Safe to run repeatedly. */
-export async function syncClientFolders(clients: Pick<Client, 'id' | 'name'>[], existing: Set<string>, uid: string, ownerName: string) {
+export async function syncClientFolders(clients: Pick<Client, 'id' | 'name'>[], existing: Set<string>, uid: string, ownerName: string, folders: readonly string[] = FOLDERS) {
   for (const c of clients) {
-    if (existing.has(clientFolderId(c.id)) && FOLDERS.every((f) => existing.has(subFolderId(c.id, f)))) continue;
-    for (const f of FOLDERS) await ensureClientFolder(c, f, uid, ownerName);
+    if (existing.has(clientFolderId(c.id)) && folders.every((f) => existing.has(subFolderId(c.id, f)))) continue;
+    for (const f of folders) await ensureClientFolder(c, f, uid, ownerName);
   }
 }
 
@@ -97,10 +97,72 @@ export async function createFolder(name: string, parent: DriveItem | null, uid: 
   const link = parent?.clientId
     ? { linked: true, clientId: parent.clientId, ebinderFolder: parent.id === clientFolderId(parent.clientId) ? name.trim() : parent.ebinderFolder ?? '' }
     : parent?.linked ? { linked: true } : {};
-  await addDoc(col(), {
+  const data = {
     type: 'folder', name: name.trim(), parentId: parent?.id ?? null, path, ownerId: uid, ownerName,
     ownShares: [], ...access, sharedRoot: false, createdAt: Timestamp.now(), ...link,
-  });
+  };
+  const r = await addDoc(col(), data);
+  return { ...(data as unknown as DriveItem), id: r.id };
+}
+
+const MIME: Record<string, string> = {
+  pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', txt: 'text/plain', csv: 'text/csv',
+  doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+const mimeOf = (name: string) => MIME[name.split('.').pop()?.toLowerCase() ?? ''] ?? '';
+
+export interface ImportResult { files: number; folders: number; skipped: string[] }
+
+/**
+ * Bulk import for migrating from another system: a ZIP, or a dropped folder, becomes the same folder tree here.
+ * A folder with the same name as an existing one (e.g. a client's name, or "Care Plans") is reused, so files inside a
+ * client's folder land in that client's eBinder too. Types the file manager doesn't allow are skipped and reported.
+ */
+export async function importTree(
+  entries: { path: string; file: File }[], parent: DriveItem | null, uid: string, ownerName: string, office: boolean,
+  onProgress?: (done: number, total: number) => void,
+): Promise<ImportResult> {
+  const result: ImportResult = { files: 0, folders: 0, skipped: [] };
+  const cache = new Map<string, DriveItem>();
+  const childFolder = async (par: DriveItem | null, name: string): Promise<DriveItem> => {
+    const key = `${par?.id ?? ''}/${name.toLowerCase()}`;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const snap = await getDocs(query(col(), where('parentId', '==', par?.id ?? null), where('type', '==', 'folder')));
+    const found = snap.docs.find((d) => String(d.data().name).toLowerCase() === name.toLowerCase());
+    let item: DriveItem;
+    if (found) item = { ...(found.data() as DriveItem), id: found.id };
+    else { item = await createFolder(name, par, uid, ownerName); result.folders++; }
+    cache.set(key, item);
+    return item;
+  };
+  let done = 0;
+  for (const e of entries) {
+    const parts = e.path.split('/').filter((p) => p && p !== '.' && p !== '..');
+    const base = parts.pop();
+    if (!base || base.startsWith('.') || base === 'Thumbs.db' || parts.some((p) => p === '__MACOSX')) { onProgress?.(++done, entries.length); continue; }
+    let cur = parent;
+    for (const seg of parts) cur = await childFolder(cur, seg);
+    const file = e.file.type ? e.file : new File([e.file], base, { type: mimeOf(base) });
+    const problem = await uploadFile(file.name === base ? file : new File([file], base, { type: file.type }), cur, uid, ownerName, office);
+    if (problem) result.skipped.push(`${e.path}: ${problem}`); else result.files++;
+    onProgress?.(++done, entries.length);
+  }
+  return result;
+}
+
+/** Reads a ZIP into importTree entries (loaded only when needed). */
+export async function zipEntries(zip: File): Promise<{ path: string; file: File }[]> {
+  const { default: JSZip } = await import('jszip');
+  const z = await JSZip.loadAsync(zip);
+  const out: { path: string; file: File }[] = [];
+  for (const [path, entry] of Object.entries(z.files)) {
+    if (entry.dir) continue;
+    const base = path.split('/').pop() ?? path;
+    out.push({ path, file: new File([await entry.async('blob')], base, { type: mimeOf(base) }) });
+  }
+  return out;
 }
 
 /**

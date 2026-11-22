@@ -6,7 +6,7 @@ import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useShiftsBetween } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { clientFolderId } from '../../lib/drive';
-import { audienceLabel, FOLDERS, useAdminDocs } from '../../lib/ebinder';
+import { audienceLabel, useAdminDocs, useFolderTemplate } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
 import { colors } from '../../lib/theme';
 import { Btn, Card, fmtDay, fmtTime, Field, initials, Muted, s, Screen, Tag } from '../../lib/ui';
@@ -16,6 +16,7 @@ import { reviewStatus } from './clients';
 const TABS = ['ISP / Care Plan', 'eBinder', 'Visit History', 'Care Team'] as const;
 
 export default function ClientDetail() {
+  const template = useFolderTemplate();
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useClients().find((x) => x.id === id);
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -33,7 +34,7 @@ export default function ClientDetail() {
   }, [c?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!c) return <Screen title="Client"><Muted>Loading…</Muted></Screen>;
-  const folders = [...FOLDERS, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !(FOLDERS as readonly string[]).includes(f)).sort()];
+  const folders = [...template, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !template.includes(f)).sort()];
   const st = reviewStatus(c.nextReview);
   const visits = shifts.filter((x) => x.status === 'completed').sort((a, b) => b.start.toMillis() - a.start.toMillis());
   const team = [...new Map(shifts.filter((x) => x.staffId).map((x) => [x.staffId, x.staffName || 'DSP'])).entries()];

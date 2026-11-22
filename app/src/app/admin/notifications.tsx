@@ -7,6 +7,7 @@ import { daysLeft } from '../../lib/expiry';
 import { markAllRead, timeAgo, useNotices } from '../../lib/notifications';
 import { colors } from '../../lib/theme';
 import { Btn, Card, Muted, s, Screen, Tag } from '../../lib/ui';
+import { useUnitRequests } from '../../lib/units';
 import { addDays, startOfDay } from '../../lib/week';
 
 export default function AdminNotifications() {
@@ -14,6 +15,7 @@ export default function AdminNotifications() {
   const inbox = useNotices(profile?.uid);
   const alerts = useOpenAlerts();
   const pending = useMissedRequests({ pendingOnly: true });
+  const unitReqs = useUnitRequests();
   const creds = useCredentials().filter((c) => daysLeft(c.expiresOn.toMillis()) <= 30);
   const today = startOfDay(new Date());
   const open = useShiftsBetween(today, addDays(today, 14)).filter((x) => !x.staffId);
@@ -21,6 +23,7 @@ export default function AdminNotifications() {
   const items: { key: string; mark: string; tone: 'amber' | 'red' | 'blue'; text: string; href: string; cta: string }[] = [
     ...alerts.map((a) => ({ key: a.id, mark: '!', tone: 'red' as const, text: `${a.staffName || 'DSP'} left ${a.clientName}`, href: '/admin', cta: 'Review' })),
     ...pending.map((m) => ({ key: m.id, mark: '!', tone: 'amber' as const, text: `${m.staffName} reported a missed clock-in for ${m.clientName}`, href: '/admin/requests', cta: 'Review' })),
+    ...unitReqs.map((r) => ({ key: r.id, mark: '!', tone: (r.priority === 'urgent' ? 'red' : 'amber') as 'red' | 'amber', text: `${r.priority === 'urgent' ? 'Urgent maintenance' : 'Maintenance'} at ${r.unitName}: ${r.title}`, href: '/admin/units', cta: 'Review' })),
     ...creds.map((c) => ({ key: c.id, mark: '!', tone: 'amber' as const, text: `${c.staffName}'s ${c.title} ${daysLeft(c.expiresOn.toMillis()) < 0 ? 'has expired' : `expires in ${daysLeft(c.expiresOn.toMillis())} days`}`, href: '/admin/training', cta: 'View' })),
     ...open.map((x) => ({ key: x.id, mark: '＋', tone: 'blue' as const, text: `Open shift needs coverage — ${x.start.toDate().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${x.clientName}`, href: '/admin/scheduling', cta: 'Assign' })),
   ];

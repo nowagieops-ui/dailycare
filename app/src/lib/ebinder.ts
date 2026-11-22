@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react';
 import {
-  collection, collectionGroup, doc, onSnapshot, orderBy, query, serverTimestamp, where, writeBatch, type Timestamp,
+  collection, collectionGroup, doc, onSnapshot, setDoc, orderBy, query, serverTimestamp, where, writeBatch, type Timestamp,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
 import type { UserProfile } from './types';
 
 export const FOLDERS = ['Care Plans', 'HR & Personnel', 'Waiver & Medicaid', 'Policies'] as const;
+/** The folders every client gets. Admins edit this list (settings/folderTemplate); FOLDERS is only the starting default. */
+export function useFolderTemplate(): string[] {
+  const [list, setList] = useState<string[]>([...FOLDERS]);
+  useEffect(() => onSnapshot(doc(db, 'settings', 'folderTemplate'), (x) => {
+    const f = x.data()?.folders;
+    setList(Array.isArray(f) ? (f as string[]) : [...FOLDERS]);
+  }, () => {}), []);
+  return list;
+}
+export async function saveFolderTemplate(folders: string[]) {
+  await setDoc(doc(db, 'settings', 'folderTemplate'), { folders });
+}
 export type Folder = string; // the four standard folders, plus any subfolder made in a client's file-manager folder
 export type Audience = 'all_staff' | 'assigned' | 'admin';
 

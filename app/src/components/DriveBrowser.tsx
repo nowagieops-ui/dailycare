@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStaff, useClients } from '../lib/admin-data';
-import { createFolder, deleteItem, fileUrl, myKeys, saveShares, syncClientFolders, uploadFile, useAllFolders, useFolder } from '../lib/drive';
+import { createFolder, deleteItem, fileUrl, myKeys, importTree, saveShares, syncClientFolders, zipEntries, uploadFile, useAllFolders, useFolder } from '../lib/drive';
+import { useFolderTemplate } from '../lib/ebinder';
 import { roleKey, type Share } from '../lib/drive-access';
 import { colors, radius } from '../lib/theme';
 import type { DriveItem, Role } from '../lib/types';
@@ -97,14 +98,15 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   const byId = useMemo(() => new Map(allFolders.map((f) => [f.id, f])), [allFolders]);
 
   // Every client gets a folder (with the eBinder subfolders) so documents can be filed straight away.
+  const template = useFolderTemplate();
   const synced = useRef('');
   useEffect(() => {
     if (mode !== 'super' || !loaded || clients.length === 0) return;
-    const key = `${clients.length}:${allFolders.length}`;
+    const key = `${clients.length}:${allFolders.length}:${template.join('|')}`;
     if (synced.current === key) return;
     synced.current = key;
-    syncClientFolders(clients, new Set(allFolders.map((f) => f.id)), uid, name).catch(() => {});
-  }, [mode, loaded, clients.length, allFolders.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    syncClientFolders(clients, new Set(allFolders.map((f) => f.id)), uid, name, template).catch(() => {});
+  }, [mode, loaded, clients.length, allFolders.length, template.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Open at a requested folder (e.g. from a client's eBinder tab).
   const opened = useRef(false);
@@ -130,6 +132,30 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
         const problem = await uploadFile(f, here, uid, name, office);
         setMsg(problem ?? `Uploaded ${f.name}`);
         if (problem) return;
+      }
+    };
+    input.click();
+  }
+
+  /** Bulk import from a ZIP or a whole folder (for moving documents over from the old system). */
+  function importBulk(kind: 'zip' | 'folder') {
+    const input = document.createElement('input');
+    input.type = 'file';
+    if (kind === 'zip') input.accept = '.zip,application/zip';
+    else { input.multiple = true; (input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true; }
+    input.onchange = async () => {
+      const files = Array.from(input.files ?? []);
+      if (files.length === 0) return;
+      try {
+        setMsg('Reading files…');
+        const entries = kind === 'zip'
+          ? await zipEntries(files[0])
+          : files.map((f) => ({ path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name, file: f }));
+        // A picked folder's own name is part of its paths; a ZIP's top-level folders are kept as they are.
+        const r = await importTree(entries, here, uid, name, office, (d, t) => setMsg(`Importing ${d} of ${t}…`));
+        setMsg(`Imported ${r.files} file${r.files === 1 ? '' : 's'} and ${r.folders} new folder${r.folders === 1 ? '' : 's'}.${r.skipped.length ? ` Skipped ${r.skipped.length}: ${r.skipped.slice(0, 3).join('; ')}${r.skipped.length > 3 ? '…' : ''}` : ''}`);
+      } catch {
+        setMsg('Import failed. Check the ZIP and your permissions, then try again.');
       }
     };
     input.click();
@@ -198,7 +224,11 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         {mode === 'super' && <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="＋ Create folder" onPress={() => setCreating((c) => !c)} tone={creating ? 'ghost' : 'primary'} /></View>}
         {canUpload && (web
-          ? <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="Upload files" tone="ghost" onPress={pickFile} /></View>
+          ? <>
+              <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="Upload files" tone="ghost" onPress={pickFile} /></View>
+              {office && <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="Import ZIP" tone="ghost" onPress={() => importBulk('zip')} /></View>}
+              {office && <View style={{ minWidth: 150, flexShrink: 0 }}><Btn label="Upload folder" tone="ghost" onPress={() => importBulk('folder')} /></View>}
+            </>
           : <Muted>Uploading is available from the web dashboard.</Muted>)}
         {here?.clientId && office ? <Muted>Files added here also appear in this client's eBinder.</Muted> : null}
       </View>

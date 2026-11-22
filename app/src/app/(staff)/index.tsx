@@ -80,6 +80,7 @@ export default function Home() {
         </Pressable>
       )}
 
+      <RowLink icon="home-outline" title="Residential Units" sub="Safety checks, maintenance, unit messages" href="/units" />
       <RowLink
         icon="school-outline" title="Training & Credentials" href="/training"
         sub={soonest ? `${soonest.title} ${daysLeft(soonest.expiresOn.toMillis()) < 0 ? 'has expired' : `expires in ${daysLeft(soonest.expiresOn.toMillis())} days`}` : 'All up to date'}

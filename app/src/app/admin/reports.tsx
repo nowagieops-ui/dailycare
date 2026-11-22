@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useShiftsBetween, useStaff } from '../../lib/admin-data';
 import { hasTraining, useCredentials, useRequiredTrainings } from '../../lib/credentials';
-import { FOLDERS, signingStatus, useAdminDocs, useAllSignatures } from '../../lib/ebinder';
+import { signingStatus, useFolderTemplate, useAdminDocs, useAllSignatures } from '../../lib/ebinder';
 import { daysLeft } from '../../lib/expiry';
 import { colors } from '../../lib/theme';
 import type { Shift } from '../../lib/types';
@@ -18,6 +18,7 @@ const worked = (x: Shift) => (x.clockInAt && x.clockOutAt ? (x.clockOutAt.toMill
 const onTime = (x: Shift) => !!x.clockInAt && x.clockInAt.toMillis() - x.start.toMillis() <= 5 * 60000;
 
 export default function Reports() {
+  const template = useFolderTemplate();
   const now = Date.now();
   const thisMon = useMemo(() => mondayOf(new Date()), []);
   const from = addDays(thisMon, -35);
@@ -98,7 +99,7 @@ export default function Reports() {
 
       <Card>
         <Text style={s.h2}>eBinder completion by folder</Text>
-        {FOLDERS.map((f) => {
+        {template.map((f) => {
           const inFolder = docs.filter((d) => d.folder === f);
           const parts = staff.flatMap((u) => signingStatus(inFolder, sigs, u.id));
           const v = pct(parts.filter((x) => x.signed).length, parts.length);

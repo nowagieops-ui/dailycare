@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useStaff } from '../../lib/admin-data';
-import { audienceLabel, FOLDERS, useAdminDocs, useSignatures, type EDoc } from '../../lib/ebinder';
+import { useAuth } from '../../lib/auth';
+import { useClients } from '../../lib/admin-data';
+import { ensureClientFolder } from '../../lib/drive';
+import { audienceLabel, saveFolderTemplate, useAdminDocs, useFolderTemplate, useSignatures, type EDoc } from '../../lib/ebinder';
 import { colors } from '../../lib/theme';
-import { Btn, Card, Chips, fmtDay, Muted, Screen, Tag } from '../../lib/ui';
+import { Btn, Card, Chips, Field, fmtDay, Muted, Screen, s, Tag } from '../../lib/ui';
 
 /** Signed count for one document (own listener per row; the list is short). */
 export function useSignedCount(d: EDoc) {
@@ -37,7 +40,25 @@ function Row({ d, W }: { d: EDoc; W: number[] }) {
 export default function EBinders() {
   const docs = useAdminDocs();
   const [folder, setFolder] = useState<string[]>([]);
-  const folders = [...FOLDERS, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !(FOLDERS as readonly string[]).includes(f)).sort()];
+  const template = useFolderTemplate();
+  const { profile } = useAuth();
+  const clients = useClients();
+  const [newName, setNewName] = useState('');
+  const [tplMsg, setTplMsg] = useState('');
+  const folders = [...template, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !template.includes(f)).sort()];
+
+  async function addCategory() {
+    const n = newName.trim();
+    if (!n || template.some((f) => f.toLowerCase() === n.toLowerCase())) { setTplMsg('That folder already exists.'); return; }
+    await saveFolderTemplate([...template, n]);
+    setNewName(''); setTplMsg(`Adding "${n}" to every client…`);
+    if (profile) for (const c of clients) await ensureClientFolder(c, n, profile.uid, profile.name).catch(() => {});
+    setTplMsg(`"${n}" added to all ${clients.length} clients. New clients get it automatically.`);
+  }
+  async function removeCategory(f: string) {
+    await saveFolderTemplate(template.filter((x) => x !== f));
+    setTplMsg(`"${f}" removed from the template. Existing client folders and their documents are kept; new clients won't get it.`);
+  }
   const shown = folder.length ? docs.filter((d) => d.folder === folder[0]) : docs;
   const W = [2.4, 1.4, 0.6, 1.2, 1.4, 1.2];
 
@@ -47,6 +68,23 @@ export default function EBinders() {
         <View style={{ flex: 1, minWidth: 240 }}><Chips options={folders.map((f) => ({ value: f as string, label: f }))} selected={folder} onToggle={(v) => setFolder((c) => (c[0] === v ? [] : [v]))} /></View>
         <View style={{ width: 190 }}><Btn label="Upload document" onPress={() => router.push('/admin/ebinder-new' as never)} /></View>
       </View>
+      <Card>
+        <Text style={s.h2}>Client folder template</Text>
+        <Muted>Every client gets these folders (in their eBinder and the file manager). Add or remove categories here.</Muted>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {template.map((f) => (
+            <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.tint, borderRadius: 999, paddingVertical: 6, paddingLeft: 12, paddingRight: 8 }}>
+              <Text style={{ fontWeight: '600', color: colors.navy }}>{f}</Text>
+              <Pressable onPress={() => removeCategory(f)} accessibilityRole="button" accessibilityLabel={`Remove ${f}`}><Text style={{ fontSize: 16, color: colors.red, fontWeight: '800' }}>×</Text></Pressable>
+            </View>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, minWidth: 200 }}><Field label="New folder name" value={newName} onChangeText={setNewName} /></View>
+          <View style={{ width: 150 }}><Btn label="Add folder" onPress={addCategory} disabled={!newName.trim()} /></View>
+        </View>
+        {tplMsg ? <Muted>{tplMsg}</Muted> : null}
+      </Card>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         {folders.map((f) => (
           <Card key={f} style={{ minWidth: 180, flexGrow: 1 }}>

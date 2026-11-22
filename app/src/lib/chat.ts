@@ -40,6 +40,30 @@ export function usePeople() {
   return rows;
 }
 
+export const isOfficeRole = (r: Role) => r === 'admin' || r === 'super_admin' || r === 'case_manager';
+/** DSPs (staff and family staff) may only message the office, never each other. */
+export const canMessage = (me: Role, other: Role) => isOfficeRole(me) || isOfficeRole(other);
+
+/** One conversation by id (lets a super admin open any chat for oversight). */
+export function useChat(chatId: string | undefined) {
+  const [chat, setChat] = useState<Chat | null>(null);
+  useEffect(() => {
+    if (!chatId) return;
+    return onSnapshot(doc(db, 'chats', chatId), (x) => setChat(x.exists() ? ({ ...(x.data() as Chat), id: x.id }) : null), () => {});
+  }, [chatId]);
+  return chat;
+}
+
+/** Super admins only: every conversation in the agency, newest first. */
+export function useAllChats(enabled: boolean) {
+  const [rows, setRows] = useState<Chat[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    return onSnapshot(collection(db, 'chats'), (s) => setRows(s.docs.map((d) => ({ ...(d.data() as Chat), id: d.id }))), () => {});
+  }, [enabled]);
+  return rows.sort((a, b) => (b.lastAt ?? b.createdAt)?.toMillis() - (a.lastAt ?? a.createdAt)?.toMillis());
+}
+
 export const chatTitle = (c: Chat, uid: string) =>
   c.title || c.members.filter((m) => m !== uid).map((m) => c.names[m] ?? 'Someone').join(', ') || 'Chat';
 
