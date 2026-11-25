@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
+import { AddressPicker } from '../../components/AddressPicker';
 import { DateField, TimeField } from '../../components/DateTimeFields';
 import { useClients, useShiftsBetween } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { clientFolderId } from '../../lib/drive';
 import { audienceLabel, useAdminDocs, useFolderTemplate } from '../../lib/ebinder';
 import { db } from '../../lib/firebase';
+import { feetToM, mToFeet } from '../../lib/geo';
 import { colors } from '../../lib/theme';
 import { Btn, Card, fmtDay, fmtTime, Field, initials, Muted, s, Screen, Tag } from '../../lib/ui';
 import { addDays, startOfDay } from '../../lib/week';
@@ -28,10 +30,32 @@ export default function ClientDetail() {
   const [last, setLast] = useState('');
   const [next, setNext] = useState('');
   const [msg, setMsg] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [eName, setEName] = useState('');
+  const [eContact, setEContact] = useState('');
+  const [ePhone, setEPhone] = useState('');
+  const [eAddr, setEAddr] = useState('');
+  const [eLoc, setELoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [eFeet, setEFeet] = useState('');
 
   useEffect(() => {
     if (c) { setGoals((c.goals ?? []).join('\n')); setLast(c.lastReviewed ?? ''); setNext(c.nextReview ?? ''); }
   }, [c?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function startEdit() {
+    setEName(c!.name); setEContact(c!.contactName ?? ''); setEPhone(c!.contactPhone ?? '');
+    setEAddr(c!.address); setELoc(null); setEFeet(String(mToFeet(c!.radiusM))); setEditing(true);
+  }
+  const addrChanged = !!c && eAddr.trim() !== c.address.trim();
+  const feetN = Number(eFeet);
+  const editOk = eName.trim() && eAddr.trim() && feetN >= 10 && feetN <= 1000 && (!addrChanged || eLoc !== null);
+  async function saveEdit() {
+    await updateDoc(doc(db, 'clients', c!.id), {
+      name: eName.trim(), contactName: eContact.trim(), contactPhone: ePhone.trim(), address: eAddr.trim(), radiusM: feetToM(feetN),
+      ...(eLoc ? { lat: eLoc.lat, lng: eLoc.lng } : {}),
+    });
+    setEditing(false); setMsg('Client details updated. Shifts already scheduled keep the address they were created with.');
+  }
 
   if (!c) return <Screen title="Client"><Muted>Loading…</Muted></Screen>;
   const folders = [...template, ...[...new Set(docs.map((d) => d.folder))].filter((f) => !template.includes(f)).sort()];
@@ -59,7 +83,21 @@ export default function ClientDetail() {
           {(c.contactName || c.dob) && <Muted>{c.dob ? `DOB ${c.dob}` : ''}{c.dob && c.contactName ? ' · ' : ''}{c.contactName ? `Contact: ${c.contactName}${c.contactPhone ? ` ${c.contactPhone}` : ''}` : ''}</Muted>}
         </View>
         <Tag text={st.text} tone={st.tone} />
+        <View style={{ minWidth: 130 }}><Btn label={editing ? 'Cancel' : 'Edit details'} tone="ghost" onPress={() => (editing ? setEditing(false) : startEdit())} /></View>
       </Card>
+      {editing && (
+        <Card>
+          <Text style={s.h2}>Edit client details</Text>
+          <Field label="Full name" value={eName} onChangeText={setEName} />
+          <Field label="Primary contact / guardian" value={eContact} onChangeText={setEContact} />
+          <Field label="Contact phone" value={ePhone} onChangeText={setEPhone} keyboardType="phone-pad" />
+          <AddressPicker label="Address" value={eAddr} confirmed={!addrChanged || eLoc !== null}
+            onText={(t) => { setEAddr(t); setELoc(null); }} onPick={(p) => { setEAddr(p.address); setELoc({ lat: p.lat, lng: p.lng }); }} />
+          <Field label="Allowed clock-in distance in feet (10–1000)" value={eFeet} onChangeText={setEFeet} keyboardType="number-pad" />
+          <Btn label="Save changes" onPress={saveEdit} disabled={!editOk} />
+        </Card>
+      )}
+      {msg && !editing ? <Muted>{msg}</Muted> : null}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, borderBottomWidth: 1, borderBottomColor: colors.line }}>
         {TABS.map((t) => (
