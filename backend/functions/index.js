@@ -187,6 +187,35 @@ exports.onChatMessage = onDocumentCreated('chats/{id}/messages/{mid}', async (e)
   if (others.length) await sendPush(db, others, 'New message', 'You have a new team chat message.');
 });
 
+/**
+ * Permanently deletes an account (super admins only). Accounts that have worked shifts or signed documents are kept
+ * (deactivate them instead) because those are compliance records.
+ */
+exports.deleteAccount = onCall(async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const me = await db.collection('users').doc(req.auth.uid).get();
+  if (!me.exists || me.data().active !== true || me.data().role !== 'super_admin') throw new HttpsError('permission-denied', 'Super admins only.');
+  const uid = req.data?.uid;
+  if (typeof uid !== 'string' || !uid) throw new HttpsError('invalid-argument', 'Missing account.');
+  if (uid === req.auth.uid) throw new HttpsError('failed-precondition', 'You cannot delete your own account.');
+  const target = await db.collection('users').doc(uid).get();
+  if (!target.exists) throw new HttpsError('not-found', 'Account not found.');
+  const theirShifts = await db.collection('shifts').where('staffId', '==', uid).get();
+  const worked = theirShifts.docs.some((d) => ['clocked_in', 'completed'].includes(d.data().status));
+  let signed = false;
+  for (const d of (await db.collection('ebinderDocs').get()).docs) {
+    if ((await d.ref.collection('signatures').where('staffId', '==', uid).limit(1).get()).size) { signed = true; break; }
+  }
+  if (worked || signed) {
+    throw new HttpsError('failed-precondition', 'This account has worked shifts or signed documents, which must be kept for audits. Deactivate it instead.');
+  }
+  // Unassign any remaining scheduled shifts so they show up as open.
+  for (const sh of theirShifts.docs) await sh.ref.update({ staffId: '', staffName: '' });
+  try { await getAuth().deleteUser(uid); } catch (e) { if (e.code !== 'auth/user-not-found') throw new HttpsError('internal', 'Could not delete the login.'); }
+  await db.collection('users').doc(uid).delete();
+  return { ok: true };
+});
+
 /** Keep the names-only directory (used to start chats) in step with accounts. */
 exports.syncDirectory = onDocumentWritten('users/{id}', async (e) => {
   const b = e.data?.after?.data();

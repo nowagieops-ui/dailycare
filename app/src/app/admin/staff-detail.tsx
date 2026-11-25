@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useShiftsBetween, useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { useCredentials, stageOf, stageTone } from '../../lib/credentials';
 import { daysLeft, stageLabel } from '../../lib/expiry';
-import { db } from '../../lib/firebase';
+import { db, functions } from '../../lib/firebase';
 import { colors } from '../../lib/theme';
 import { Btn, Card, fmtDay, fmtTime, initials, Muted, Pill, s, Screen, Tag } from '../../lib/ui';
 import { addDays, hoursWorked, startOfDay } from '../../lib/week';
@@ -25,6 +26,21 @@ export default function StaffDetail() {
   const [busy, setBusy] = useState(false);
 
   if (!user) return <Screen title="DSP"><Muted>Loading…</Muted></Screen>;
+  async function doDelete() {
+    setBusy(true);
+    try {
+      await httpsCallable(functions, 'deleteAccount')({ uid: user!.id });
+      router.replace('/admin/staff' as never);
+    } catch (e) {
+      const m = (e as { message?: string }).message || 'Could not delete this account.';
+      if (Platform.OS === 'web') window.alert(m); else Alert.alert('Not deleted', m);
+    } finally { setBusy(false); }
+  }
+  function askDelete() {
+    const text = `Permanently delete ${user!.name}? Their login is removed and this cannot be undone. Accounts with worked shifts or signed documents can't be deleted; deactivate those instead.`;
+    if (Platform.OS === 'web') { if (window.confirm(text)) doDelete(); }
+    else Alert.alert('Delete account', text, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doDelete }]);
+  }
   const canEdit = profile?.role === 'super_admin' || (profile?.role === 'admin' && (user.role === 'staff' || user.role === 'family_staff'));
   const upcoming = shifts.filter((x) => x.start.toMillis() >= today.getTime()).sort((a, b) => a.start.toMillis() - b.start.toMillis());
   const past = shifts.filter((x) => x.start.toMillis() < today.getTime() + 86400000).sort((a, b) => b.start.toMillis() - a.start.toMillis());
@@ -53,6 +69,9 @@ export default function StaffDetail() {
             <Btn label={user.active ? 'Deactivate' : 'Reactivate'} tone={user.active ? 'danger' : 'primary'} busy={busy}
               onPress={async () => { setBusy(true); try { await updateDoc(doc(db, 'users', user.id), { active: !user.active }); } finally { setBusy(false); } }} />
           </View>
+        )}
+        {profile?.role === 'super_admin' && user.id !== profile.uid && (
+          <View style={{ width: 150 }}><Btn label="Delete" tone="danger" busy={busy} onPress={askDelete} /></View>
         )}
       </Card>
 
