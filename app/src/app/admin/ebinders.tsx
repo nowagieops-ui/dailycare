@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { useClients } from '../../lib/admin-data';
-import { ensureClientFolder } from '../../lib/drive';
+import { ensureClientFolder, renameCategoryEverywhere } from '../../lib/drive';
 import { audienceLabel, saveFolderTemplate, useAdminDocs, useFolderTemplate, useSignatures, type EDoc } from '../../lib/ebinder';
 import { colors } from '../../lib/theme';
 import { Btn, Card, Chips, Field, fmtDay, Muted, Screen, s, Tag } from '../../lib/ui';
@@ -55,6 +55,21 @@ export default function EBinders() {
     if (profile) for (const c of clients) await ensureClientFolder(c, n, profile.uid, profile.name).catch(() => {});
     setTplMsg(`"${n}" added to all ${clients.length} clients. New clients get it automatically.`);
   }
+  const [renFrom, setRenFrom] = useState<string | null>(null);
+  const [renTo, setRenTo] = useState('');
+  async function commitRename() {
+    const to = renTo.trim();
+    if (!renFrom || !to || to === renFrom) { setRenFrom(null); return; }
+    if (template.some((f) => f.toLowerCase() === to.toLowerCase() && f !== renFrom)) { setTplMsg('That folder name is already used.'); return; }
+    setTplMsg('Renaming everywhere…');
+    try {
+      await saveFolderTemplate(template.map((f) => (f === renFrom ? to : f)));
+      await renameCategoryEverywhere(renFrom, to);
+      setTplMsg(`"${renFrom}" is now "${to}" for every client, in eBinders and the file manager.`);
+      setFolder([]);
+    } catch { setTplMsg('Could not rename. Try again.'); }
+    setRenFrom(null);
+  }
   async function removeCategory(f: string) {
     await saveFolderTemplate(template.filter((x) => x !== f));
     setTplMsg(`"${f}" removed from the template. Existing client folders and their documents are kept; new clients won't get it.`);
@@ -75,10 +90,18 @@ export default function EBinders() {
           {template.map((f) => (
             <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.tint, borderRadius: 999, paddingVertical: 6, paddingLeft: 12, paddingRight: 8 }}>
               <Text style={{ fontWeight: '600', color: colors.navy }}>{f}</Text>
+              {profile?.role === 'super_admin' && <Pressable onPress={() => { setRenFrom(f); setRenTo(f); }} accessibilityRole="button" accessibilityLabel={`Rename ${f}`}><Text style={{ fontSize: 13, color: colors.primary, fontWeight: '700' }}>Rename</Text></Pressable>}
               <Pressable onPress={() => removeCategory(f)} accessibilityRole="button" accessibilityLabel={`Remove ${f}`}><Text style={{ fontSize: 16, color: colors.red, fontWeight: '800' }}>×</Text></Pressable>
             </View>
           ))}
         </View>
+        {renFrom && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+            <View style={{ flex: 1, minWidth: 200 }}><Field label={`Rename "${renFrom}" to`} value={renTo} onChangeText={setRenTo} /></View>
+            <View style={{ width: 110 }}><Btn label="Save" onPress={commitRename} disabled={!renTo.trim()} /></View>
+            <View style={{ width: 110 }}><Btn label="Cancel" tone="ghost" onPress={() => setRenFrom(null)} /></View>
+          </View>
+        )}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
           <View style={{ flex: 1, minWidth: 200 }}><Field label="New folder name" value={newName} onChangeText={setNewName} /></View>
           <View style={{ width: 150 }}><Btn label="Add folder" onPress={addCategory} disabled={!newName.trim()} /></View>

@@ -10,6 +10,7 @@ export interface UserProfile {
   startDate?: string; // YYYY-MM-DD
   role: Role;
   active: boolean;
+  recordsFolderId?: string; // file-manager folder holding this DSP's records
 }
 
 export interface Task {
@@ -134,6 +135,7 @@ export interface DriveItem {
   sharedRoot: boolean; // true where a share was set directly; staff see these at their top level
   ownerName?: string; // who added it (shown as "Updated by")
   linked?: boolean; // true for the Individuals tree: office roles can read it and its files mirror into eBinders
+  dspId?: string; // the DSP whose records this folder holds
   clientId?: string; // the client this folder or file belongs to
   ebinderFolder?: string; // eBinder folder name this maps to ('' = the client's top folder, shown as General)
   ebinderDocId?: string; // the eBinder document this file is linked to

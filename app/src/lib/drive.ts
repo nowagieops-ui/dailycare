@@ -81,15 +81,74 @@ export async function ensureClientFolder(client: Pick<Client, 'id' | 'name'>, fo
   const root = await ensureFolder(ROOT_ID, 'Individuals', null, uid, ownerName, {});
   const top = await ensureFolder(clientFolderId(client.id), client.name, root, uid, ownerName, { clientId: client.id, ebinderFolder: '' });
   if (!folder || folder === 'General') return top;
+  // A folder renamed from its original name keeps its id, so find it by its eBinder folder name first.
+  const renamed = await getDocs(query(col(), where('clientId', '==', client.id), where('ebinderFolder', '==', folder)));
+  const hit = renamed.docs.find((d) => d.data().type === 'folder' && d.data().parentId === top.id);
+  if (hit) return { ...(hit.data() as DriveItem), id: hit.id };
   return ensureFolder(subFolderId(client.id, folder), folder, top, uid, ownerName, { clientId: client.id, ebinderFolder: folder });
 }
 
 /** Makes sure each client has a folder with the standard eBinder subfolders. Safe to run repeatedly. */
-export async function syncClientFolders(clients: Pick<Client, 'id' | 'name'>[], existing: Set<string>, uid: string, ownerName: string, folders: readonly string[] = FOLDERS) {
+export async function syncClientFolders(clients: Pick<Client, 'id' | 'name'>[], existing: DriveItem[], uid: string, ownerName: string, folders: readonly string[] = FOLDERS) {
+  const ids = new Set(existing.map((f) => f.id));
+  const hasCat = (cid: string, f: string) => existing.some((x) => x.clientId === cid && x.ebinderFolder === f && x.type === 'folder');
   for (const c of clients) {
-    if (existing.has(clientFolderId(c.id)) && folders.every((f) => existing.has(subFolderId(c.id, f)))) continue;
+    if (ids.has(clientFolderId(c.id)) && folders.every((f) => hasCat(c.id, f))) continue;
     for (const f of folders) await ensureClientFolder(c, f, uid, ownerName);
   }
+}
+
+async function commitBatches(ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[]) {
+  for (let i = 0; i < ops.length; i += 400) {
+    const b = writeBatch(db);
+    ops.slice(i, i + 400).forEach((o) => b.update(o.ref, o.data));
+    await b.commit();
+  }
+}
+
+/**
+ * Renames a file or folder. Renaming a client's eBinder folder (e.g. "Care Plans") also renames that folder in the
+ * client's eBinder; renaming a document renames its eBinder title too.
+ */
+export async function renameItem(item: DriveItem, rawName: string) {
+  const name = rawName.trim().slice(0, 200);
+  if (!name || name === item.name) return;
+  const ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = [{ ref: doc(db, 'drive', item.id), data: { name } }];
+  const category = item.type === 'folder' && !!item.clientId && item.parentId === clientFolderId(item.clientId);
+  if (category) {
+    const old = item.ebinderFolder ?? '';
+    const under = await getDocs(query(col(), where('clientId', '==', item.clientId), where('ebinderFolder', '==', old)));
+    under.docs.filter((d) => d.id !== item.id).forEach((d) => ops.push({ ref: d.ref, data: { ebinderFolder: name } }));
+    ops[0].data.ebinderFolder = name;
+    const docs = await getDocs(query(collection(db, 'ebinderDocs'), where('clientId', '==', item.clientId), where('folder', '==', old)));
+    docs.docs.forEach((d) => ops.push({ ref: d.ref, data: { folder: name } }));
+  } else if (item.type === 'file' && item.ebinderDocId) {
+    ops.push({ ref: doc(db, 'ebinderDocs', item.ebinderDocId), data: { fileName: name, title: name.replace(/\.[^.]+$/, '') } });
+  }
+  await commitBatches(ops);
+}
+
+/** Renames an eBinder category for every client: the template entry is changed by the caller. */
+export async function renameCategoryEverywhere(oldName: string, newName: string) {
+  const ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = [];
+  const dr = await getDocs(query(col(), where('ebinderFolder', '==', oldName)));
+  dr.docs.forEach((d) => {
+    const x = d.data();
+    ops.push({ ref: d.ref, data: { ebinderFolder: newName, ...(x.type === 'folder' && x.clientId && x.parentId === clientFolderId(x.clientId) ? { name: newName } : {}) } });
+  });
+  const ed = await getDocs(query(collection(db, 'ebinderDocs'), where('folder', '==', oldName)));
+  ed.docs.forEach((d) => ops.push({ ref: d.ref, data: { folder: newName } }));
+  await commitBatches(ops);
+}
+
+/** Creates (or reuses) a folder named after a DSP inside `parent` and returns it. */
+export async function ensureDspFolder(dsp: { id: string; name: string }, parent: DriveItem | null, uid: string, ownerName: string): Promise<DriveItem> {
+  const snap = await getDocs(query(col(), where('parentId', '==', parent?.id ?? null), where('type', '==', 'folder')));
+  const hit = snap.docs.find((d) => d.data().dspId === dsp.id);
+  if (hit) return { ...(hit.data() as DriveItem), id: hit.id };
+  const made = await createFolder(dsp.name, parent, uid, ownerName);
+  await updateDoc(doc(db, 'drive', made.id), { dspId: dsp.id });
+  return { ...made, dspId: dsp.id } as DriveItem;
 }
 
 export async function createFolder(name: string, parent: DriveItem | null, uid: string, ownerName = '') {

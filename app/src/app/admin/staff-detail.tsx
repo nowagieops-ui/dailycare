@@ -8,8 +8,10 @@ import { useAuth } from '../../lib/auth';
 import { useCredentials, stageOf, stageTone } from '../../lib/credentials';
 import { daysLeft, stageLabel } from '../../lib/expiry';
 import { db, functions } from '../../lib/firebase';
+import { ensureDspFolder, useAllFolders } from '../../lib/drive';
+import type { DriveItem } from '../../lib/types';
 import { colors } from '../../lib/theme';
-import { Btn, Card, fmtDay, fmtTime, initials, Muted, Pill, s, Screen, Tag } from '../../lib/ui';
+import { Btn, Card, Field, fmtDay, fmtTime, initials, Muted, Pill, s, Screen, Tag } from '../../lib/ui';
 import { addDays, hoursWorked, startOfDay } from '../../lib/week';
 import { ROLE_LABEL } from './staff';
 
@@ -24,6 +26,23 @@ export default function StaffDetail() {
   const shifts = useShiftsBetween(addDays(today, -30), addDays(today, 30)).filter((x) => x.staffId === id);
   const [tab, setTab] = useState<(typeof TABS)[number]>('Profile');
   const [busy, setBusy] = useState(false);
+  const isSuper = profile?.role === 'super_admin';
+  const { items: allFolders } = useAllFolders(isSuper);
+  const [fq, setFq] = useState('');
+  const [fmsg, setFmsg] = useState('');
+  const pathName = (f: DriveItem) => [...f.path.map((p) => allFolders.find((x) => x.id === p)?.name ?? ''), f.name].filter(Boolean).join(' / ');
+  const current = allFolders.find((f) => f.id === user?.recordsFolderId);
+  const choices = allFolders.filter((f) => !f.clientId && !f.dspId).map((f) => ({ f, label: pathName(f) }))
+    .filter((x) => x.label.toLowerCase().includes(fq.trim().toLowerCase())).sort((a, b) => a.label.localeCompare(b.label)).slice(0, 12);
+  async function fileHere(parent: DriveItem | null) {
+    if (!user || !profile) return;
+    setFmsg('Saving…');
+    try {
+      const made = await ensureDspFolder({ id: user.id, name: user.name }, parent, profile.uid, profile.name);
+      await updateDoc(doc(db, 'users', user.id), { recordsFolderId: made.id });
+      setFmsg(`${user.name}'s records folder is "${pathName(made)}".`);
+    } catch { setFmsg('Could not set the folder. Try again.'); }
+  }
 
   if (!user) return <Screen title="DSP"><Muted>Loading…</Muted></Screen>;
   async function doDelete() {
@@ -37,7 +56,7 @@ export default function StaffDetail() {
     } finally { setBusy(false); }
   }
   function askDelete() {
-    const text = `Permanently delete ${user!.name}? Their login is removed and this cannot be undone. Accounts with worked shifts or signed documents can't be deleted; deactivate those instead.`;
+    const text = `Permanently delete ${user!.name}? Their login and profile are removed and this cannot be undone. Past shifts and signed documents stay on record with their name; upcoming shifts become open.`;
     if (Platform.OS === 'web') { if (window.confirm(text)) doDelete(); }
     else Alert.alert('Delete account', text, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doDelete }]);
   }
@@ -85,6 +104,25 @@ export default function StaffDetail() {
 
       {tab === 'Profile' && (
         <>
+          {isSuper && (
+            <Card>
+              <Text style={s.h2}>File manager folder</Text>
+              <Muted>Choose where this DSP's records are filed (for example your Active, Inactive or Pending DSP folders). A folder with their name is created inside the one you pick.</Muted>
+              <Text style={{ color: colors.ink }}>Current: {current ? pathName(current) : 'not set'}</Text>
+              <Field label="Find a folder" value={fq} onChangeText={setFq} />
+              {choices.length === 0 && <Muted>No folders match. Create them in the File manager first.</Muted>}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {choices.map(({ f, label }) => (
+                  <Pressable key={f.id} onPress={() => fileHere(f)} accessibilityRole="button"
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.paper }}>
+                    <Text style={{ color: colors.inkSoft, fontWeight: '600' }}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {current && <Btn label="Open their folder" tone="ghost" onPress={() => router.push({ pathname: '/admin/files', params: { folder: current.id } } as never)} />}
+              {fmsg ? <Muted>{fmsg}</Muted> : null}
+            </Card>
+          )}
           <Card>
             <Text style={s.h2}>Contact & role</Text>
             {row('Email', user.email)}{row('Phone', user.phone ?? '')}{row('Role', ROLE_LABEL[user.role])}

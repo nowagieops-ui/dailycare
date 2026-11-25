@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStaff, useClients } from '../lib/admin-data';
-import { createFolder, deleteItem, fileUrl, myKeys, importTree, saveShares, syncClientFolders, zipEntries, uploadFile, useAllFolders, useFolder } from '../lib/drive';
+import { clientFolderId, createFolder, deleteItem, fileUrl, myKeys, importTree, renameItem, saveShares, syncClientFolders, zipEntries, uploadFile, useAllFolders, useFolder } from '../lib/drive';
 import { useFolderTemplate } from '../lib/ebinder';
 import { roleKey, type Share } from '../lib/drive-access';
 import { colors, radius } from '../lib/theme';
@@ -88,6 +88,8 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   const [find, setFind] = useState('');
   const [msg, setMsg] = useState('');
   const [sharing, setSharing] = useState<DriveItem | null>(null);
+  const [renaming, setRenaming] = useState<DriveItem | null>(null);
+  const [renameTo, setRenameTo] = useState('');
   const [viewKeys, setViewKeys] = useState<string[]>([]);
   const [upKeys, setUpKeys] = useState<string[]>([]);
 
@@ -105,7 +107,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
     const key = `${clients.length}:${allFolders.length}:${template.join('|')}`;
     if (synced.current === key) return;
     synced.current = key;
-    syncClientFolders(clients, new Set(allFolders.map((f) => f.id)), uid, name, template).catch(() => {});
+    syncClientFolders(clients, allFolders, uid, name, template).catch(() => {});
   }, [mode, loaded, clients.length, allFolders.length, template.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Open at a requested folder (e.g. from a client's eBinder tab).
@@ -184,6 +186,16 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
     await saveShares(sharing, own);
     setMsg(`Sharing updated for "${sharing.name}".`);
     setSharing(null);
+  }
+  function startRename(it: DriveItem) { setRenaming(it); setRenameTo(it.name); setSharing(null); setCreating(false); }
+  async function commitRename() {
+    if (!renaming) return;
+    try {
+      await renameItem(renaming, renameTo);
+      setTrail((t) => t.map((x) => (x.id === renaming.id ? { ...x, name: renameTo.trim() } : x)));
+      setMsg(`Renamed to "${renameTo.trim()}".`);
+    } catch { setMsg('Could not rename. Check your connection and try again.'); }
+    setRenaming(null);
   }
   async function remove(it: DriveItem) {
     const extra = it.type === 'folder' ? ' and everything inside it' : '';
@@ -282,6 +294,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
               <View style={{ flex: W[5], flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-end' }}>
                 {mode === 'super' && (
                   <>
+                    <Pressable onPress={() => startRename(it)} accessibilityRole="button"><Text style={{ color: colors.primary, fontWeight: '700' }}>Rename</Text></Pressable>
                     <Pressable onPress={() => startShare(it)} accessibilityRole="button">
                       <Text style={{ color: colors.primary, fontWeight: '700' }}>{it.ownShares.length ? `Shared (${it.ownShares.length})` : 'Share'}</Text>
                     </Pressable>
@@ -293,6 +306,19 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
           ))}
         </View>
       </Card>
+
+      {renaming && (
+        <Card>
+          <Text style={s.h2}>Rename "{renaming.name}"</Text>
+          {renaming.type === 'folder' && renaming.clientId && renaming.parentId === clientFolderId(renaming.clientId)
+            ? <Muted>This is one of the client's eBinder folders, so it is renamed in their eBinder too.</Muted> : null}
+          <Field label="New name" value={renameTo} onChangeText={setRenameTo} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}><Btn label="Cancel" tone="ghost" onPress={() => setRenaming(null)} /></View>
+            <View style={{ flex: 1 }}><Btn label="Rename" onPress={commitRename} disabled={!renameTo.trim()} /></View>
+          </View>
+        </Card>
+      )}
 
       {sharing && (
         <Card>

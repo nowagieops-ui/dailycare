@@ -188,8 +188,7 @@ exports.onChatMessage = onDocumentCreated('chats/{id}/messages/{mid}', async (e)
 });
 
 /**
- * Permanently deletes an account (super admins only). Accounts that have worked shifts or signed documents are kept
- * (deactivate them instead) because those are compliance records.
+ * Permanently deletes an account (super admins only). Past shifts and signatures are kept with the person's name.
  */
 exports.deleteAccount = onCall(async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
@@ -200,17 +199,11 @@ exports.deleteAccount = onCall(async (req) => {
   if (uid === req.auth.uid) throw new HttpsError('failed-precondition', 'You cannot delete your own account.');
   const target = await db.collection('users').doc(uid).get();
   if (!target.exists) throw new HttpsError('not-found', 'Account not found.');
+  // History stays: worked shifts and signatures keep the person's name. Only upcoming, unworked shifts are opened up.
   const theirShifts = await db.collection('shifts').where('staffId', '==', uid).get();
-  const worked = theirShifts.docs.some((d) => ['clocked_in', 'completed'].includes(d.data().status));
-  let signed = false;
-  for (const d of (await db.collection('ebinderDocs').get()).docs) {
-    if ((await d.ref.collection('signatures').where('staffId', '==', uid).limit(1).get()).size) { signed = true; break; }
+  for (const sh of theirShifts.docs) {
+    if (sh.data().status === 'scheduled') await sh.ref.update({ staffId: '', staffName: '' });
   }
-  if (worked || signed) {
-    throw new HttpsError('failed-precondition', 'This account has worked shifts or signed documents, which must be kept for audits. Deactivate it instead.');
-  }
-  // Unassign any remaining scheduled shifts so they show up as open.
-  for (const sh of theirShifts.docs) await sh.ref.update({ staffId: '', staffName: '' });
   try { await getAuth().deleteUser(uid); } catch (e) { if (e.code !== 'auth/user-not-found') throw new HttpsError('internal', 'Could not delete the login.'); }
   await db.collection('users').doc(uid).delete();
   return { ok: true };
