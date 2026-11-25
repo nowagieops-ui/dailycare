@@ -298,6 +298,30 @@ export async function saveShares(item: DriveItem, own: Share[]) {
   }
 }
 
+/** Moves a folder (with everything in it) under another folder; access is recomputed from the new parent. */
+export async function moveFolder(item: DriveItem, dest: DriveItem | null) {
+  if (dest && (dest.id === item.id || dest.path.includes(item.id))) throw new Error('Cannot move a folder into itself.');
+  const under = (await getDocs(query(col(), where('path', 'array-contains', item.id)))).docs;
+  const newPath = dest ? [...dest.path, dest.id] : [];
+  const nodes = [
+    { id: item.id, parentId: dest?.id ?? null, ownShares: item.ownShares ?? [] },
+    ...under.map((d) => ({ id: d.id, parentId: d.data().parentId as string | null, ownShares: (d.data().ownShares ?? []) as Share[] })),
+  ];
+  const acc = propagate(item.id, dest ? { viewers: dest.viewers, uploaders: dest.uploaders } : null, nodes);
+  const ops: { id: string; data: Record<string, unknown> }[] = [
+    { id: item.id, data: { parentId: dest?.id ?? null, path: newPath, ...(acc.get(item.id) ?? {}) } },
+    ...under.map((d) => {
+      const p = d.data().path as string[];
+      return { id: d.id, data: { path: [...newPath, ...p.slice(p.indexOf(item.id))], ...(acc.get(d.id) ?? {}) } };
+    }),
+  ];
+  for (let i = 0; i < ops.length; i += MAX_BATCH) {
+    const b = writeBatch(db);
+    ops.slice(i, i + MAX_BATCH).forEach((o) => b.update(doc(db, 'drive', o.id), o.data));
+    await b.commit();
+  }
+}
+
 /** Deletes a folder, everything inside it, and the stored files. A file that came from eBinders only leaves the file manager. */
 export async function deleteItem(item: DriveItem) {
   const under = item.type === 'folder' ? (await getDocs(query(col(), where('path', 'array-contains', item.id)))).docs : [];

@@ -8,7 +8,7 @@ import { useAuth } from '../../lib/auth';
 import { useCredentials, stageOf, stageTone } from '../../lib/credentials';
 import { daysLeft, stageLabel } from '../../lib/expiry';
 import { db, functions } from '../../lib/firebase';
-import { ensureDspFolder, useAllFolders } from '../../lib/drive';
+import { ensureDspFolder, moveFolder, useAllFolders } from '../../lib/drive';
 import type { DriveItem } from '../../lib/types';
 import { colors } from '../../lib/theme';
 import { Btn, Card, Field, fmtDay, fmtTime, initials, Muted, Pill, s, Screen, Tag } from '../../lib/ui';
@@ -34,6 +34,17 @@ export default function StaffDetail() {
   const current = allFolders.find((f) => f.id === user?.recordsFolderId);
   const choices = allFolders.filter((f) => !f.clientId && !f.dspId).map((f) => ({ f, label: pathName(f) }))
     .filter((x) => x.label.toLowerCase().includes(fq.trim().toLowerCase())).sort((a, b) => a.label.localeCompare(b.label)).slice(0, 12);
+  /** Moves the DSP's records folder to the sibling "Active" / "Inactive" folder when their status changes. */
+  async function followStatus(nowActive: boolean) {
+    if (!isSuper || !current) return '';
+    const want = nowActive ? 'active' : 'inactive';
+    const named = allFolders.filter((f) => f.name.trim().toLowerCase() === want && !f.dspId && f.id !== current.id);
+    const dest = named.find((f) => f.parentId === (allFolders.find((x) => x.id === current.parentId)?.parentId ?? null)) ?? named[0];
+    if (!dest) return ` No "${nowActive ? 'Active' : 'Inactive'}" folder was found, so their records folder stayed where it is.`;
+    if (current.parentId === dest.id) return '';
+    await moveFolder(current, dest);
+    return ` Their records folder moved to "${pathName(dest)}".`;
+  }
   async function fileHere(parent: DriveItem | null) {
     if (!user || !profile) return;
     setFmsg('Saving…');
@@ -86,7 +97,14 @@ export default function StaffDetail() {
         {canEdit && user.id !== profile?.uid && (
           <View style={{ width: 150 }}>
             <Btn label={user.active ? 'Deactivate' : 'Reactivate'} tone={user.active ? 'danger' : 'primary'} busy={busy}
-              onPress={async () => { setBusy(true); try { await updateDoc(doc(db, 'users', user.id), { active: !user.active }); } finally { setBusy(false); } }} />
+              onPress={async () => {
+                setBusy(true);
+                try {
+                  await updateDoc(doc(db, 'users', user.id), { active: !user.active });
+                  const note = await followStatus(!user.active).catch(() => ' Their records folder could not be moved.');
+                  if (note) setFmsg(note.trim());
+                } finally { setBusy(false); }
+              }} />
           </View>
         )}
         {profile?.role === 'super_admin' && user.id !== profile.uid && (
