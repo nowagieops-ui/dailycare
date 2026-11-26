@@ -227,6 +227,65 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- Accountability features ----
+    // Super-admin activity log: office users record who did what; only super admins read it. Append-only.
+    match /activity/{id} {
+      allow create: if isOffice() && request.resource.data.actorId == request.auth.uid && request.resource.data.at == request.time;
+      allow read: if isSuper();
+      allow update, delete: if false;
+    }
+
+    // Supply requests: reviewer -> any one approver -> purchasers. Who sits at each stage is set in settings/supplyFlow.
+    function supplyFlow() { return get(/databases/$(database)/documents/settings/supplyFlow).data; }
+    match /supplyRequests/{id} {
+      allow read: if isActive() && (resource.data.byId == request.auth.uid || isOffice()
+        || request.auth.uid in supplyFlow().get('reviewerIds', [])
+        || request.auth.uid in supplyFlow().get('approverIds', [])
+        || request.auth.uid in supplyFlow().get('purchaserIds', []));
+      allow create: if isActive() && request.resource.data.byId == request.auth.uid && request.resource.data.stage == 'review';
+      allow update: if isSuper() || (isActive() && (
+        (resource.data.stage == 'review' && request.auth.uid in supplyFlow().get('reviewerIds', []) && request.resource.data.stage in ['approval', 'rejected'])
+        || (resource.data.stage == 'approval' && request.auth.uid in supplyFlow().get('approverIds', []) && request.resource.data.stage in ['purchasing', 'rejected'])
+        || (resource.data.stage == 'purchasing' && request.auth.uid in supplyFlow().get('purchaserIds', []) && request.resource.data.stage == 'fulfilled')));
+      allow delete: if isSuper();
+    }
+
+    // Call-outs and planned leave. A DSP files their own; admins decide. A replacement answers through a Cloud Function.
+    match /callouts/{id} {
+      allow read: if isActive() && (resource.data.staffId == request.auth.uid || resource.data.get('replacementId', '') == request.auth.uid || isOffice());
+      allow create: if isActive() && ((request.resource.data.staffId == request.auth.uid && request.resource.data.status == 'requested') || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Tasks that management assigns to admin staff and team leads (with sign-off, extensions and performance reports).
+    match /adminTasks/{id} {
+      allow read: if isActive() && (isSuper() || request.auth.uid in resource.data.participants);
+      allow create: if isOffice() && request.resource.data.assignerId == request.auth.uid;
+      allow update: if isActive() && (isSuper() || resource.data.assignerId == request.auth.uid
+        || (request.auth.uid == resource.data.assigneeId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'response', 'responseAt', 'extension', 'history'])
+            && (resource.data.get('response', '') == '' || request.resource.data.response == resource.data.response)));
+      allow delete: if isSuper();
+    }
+
+    // Hourly night-shift status checks: written once, stamped by the server, never edited (so they cannot be backfilled).
+    match /unitChecks/{id} {
+      allow read: if isActive();
+      allow create: if isActive() && request.resource.data.byId == request.auth.uid && request.resource.data.at == request.time
+                    && request.resource.data.slot is timestamp
+                    && request.time >= request.resource.data.slot - duration.value(15, 'm')
+                    && request.time <= request.resource.data.slot + duration.value(5, 'm');
+      allow update, delete: if false;
+    }
+
+    // Location points recorded during a clocked-in shift.
+    match /shiftTrack/{id} {
+      allow create: if isActive() && request.resource.data.staffId == request.auth.uid;
+      allow read: if isOffice();
+      allow update, delete: if false;
+    }
+
     // Required-training catalog: everyone signed in reads it; admins manage it.
     match /trainings/{id} {
       allow read: if isActive();

@@ -3,6 +3,7 @@ import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { router } from 'expo-router';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { startTour } from '../../components/Tour';
 import { useAuth } from '../../lib/auth';
 import { auth, db } from '../../lib/firebase';
 import { usePrefs } from '../../lib/prefs';
@@ -29,6 +30,7 @@ export default function Settings() {
 
   return (
     <StaffScreen title="Settings">
+      <Btn label="Take a Tour" tone="ghost" onPress={() => startTour('dsp')} />
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#fff', fontWeight: '700' }}>{initials(profile.name)}</Text>

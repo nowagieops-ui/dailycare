@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { startTour, TourHost } from '../components/Tour';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Image, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
@@ -28,6 +29,9 @@ const MORE: Item[] = [
   { href: '/admin/chat', label: 'Team Chat', icon: 'chatbubbles-outline' },
   { href: '/admin/announcements', label: 'Announcements', icon: 'megaphone-outline' },
   { href: '/admin/units', label: 'Residential units', icon: 'home-outline' },
+  { href: '/admin/tracking', label: 'Shift locations', icon: 'location-outline' },
+  { href: '/admin/tasks', label: 'Tasks & performance', icon: 'checkmark-done-outline' },
+  { href: '/admin/callouts', label: 'Call-outs & time off', icon: 'calendar-clear-outline' },
   { href: '/admin/requests', label: 'Missed clock-ins', icon: 'alert-circle-outline' },
   { href: '/admin/records', label: 'Visit records', icon: 'document-text-outline' },
   { href: '/admin/files', label: 'File manager', icon: 'file-tray-full-outline', superOnly: true },
@@ -141,6 +145,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
           />
         </View>
       )}
+      <Pressable accessibilityRole="button" accessibilityLabel="Take a tour" onPress={() => startTour('admin')}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.tint }}>
+        <Ionicons name="compass-outline" size={18} color={colors.primary} />
+        {wide && <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Take a Tour</Text>}
+      </Pressable>
       <Pressable accessibilityLabel="Notifications" onPress={() => router.push('/admin/notifications' as never)} style={{ padding: 6 }}>
         <Ionicons name="notifications-outline" size={22} color={colors.primary} />
       </Pressable>
@@ -157,6 +166,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.bg }}>
         <View style={{ width: 248 }}><Nav path={path} onGo={() => {}} /></View>
         <View style={{ flex: 1 }}>{topbar}{content}</View>
+        <TourHost />
       </View>
     );
   }
@@ -164,6 +174,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       {topbar}
       {content}
+      <TourHost />
       {open && (
         <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row' }}>
           <View style={{ width: 272 }}><SafeAreaView style={{ flex: 1, backgroundColor: colors.navy }}><Nav path={path} onGo={() => setOpen(false)} /></SafeAreaView></View>

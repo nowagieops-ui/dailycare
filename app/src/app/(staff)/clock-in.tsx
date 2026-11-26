@@ -6,10 +6,12 @@ import { useAuth } from '../../lib/auth';
 import { distanceM, isWithinSite } from '../../lib/geo';
 import { requestLocationPermissions, startShiftGeofence, stopShiftGeofence } from '../../lib/geofence';
 import { formsBlocker, formsForShift, useShiftSubmissions, useTemplates } from '../../lib/forms';
+import { NIGHT_STATUSES, nightSlots, residentialBlocker, slotState, submitNightCheck, useShiftChecks, useUnitLogs, useUnits } from '../../lib/units';
+import { startTracking, stopTracking } from '../../lib/tracking';
 import { clockIn, clockOut, clockOutBlocker, isShiftTime, pickCurrent, useMyShifts } from '../../lib/shifts';
 import { StaffScreen } from '../../lib/staff-ui';
 import { colors } from '../../lib/theme';
-import { Btn, Card, fmtTime, Muted } from '../../lib/ui';
+import { Btn, Card, Chips, Field, fmtTime, Muted, s } from '../../lib/ui';
 
 type Range = { state: 'idle' } | { state: 'denied' } | { state: 'within' } | { state: 'outside'; metres: number };
 
@@ -23,6 +25,12 @@ export default function ClockIn() {
   const [msg, setMsg] = useState('');
   const [range, setRange] = useState<Range>({ state: 'idle' });
   const [now, setNow] = useState(new Date());
+  const units = useUnits();
+  const unit = units.find((u) => u.id === shift?.unitId);
+  const unitLogs = useUnitLogs(shift?.unitId ?? '');
+  const checks = useShiftChecks(shift?.unitId ? shift.id : undefined);
+  const [nStatus, setNStatus] = useState<string[]>([]);
+  const [nNote, setNNote] = useState('');
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -71,6 +79,7 @@ export default function ClockIn() {
       }
       await clockIn(shift, lat, lng);
       await startShiftGeofence(shift.id, shift.lat, shift.lng, shift.radiusM).catch(() => {});
+      await startTracking(shift.id, profile!.uid).catch(() => {});
     } catch {
       setMsg('Could not get your location. Check that location is on and try again.');
     } finally { setBusy(false); }
@@ -79,10 +88,11 @@ export default function ClockIn() {
   async function doClockOut() {
     if (!shift) return;
     setBusy(true);
-    try { await clockOut(shift); await stopShiftGeofence().catch(() => {}); } finally { setBusy(false); }
+    try { await clockOut(shift); await stopShiftGeofence().catch(() => {}); await stopTracking().catch(() => {}); } finally { setBusy(false); }
   }
 
-  const blocker = clockOutBlocker(shift) ?? formsBlocker(formsForShift(templates, shift), subs);
+  const blocker = clockOutBlocker(shift) ?? formsBlocker(formsForShift(templates, shift), subs) ?? residentialBlocker(shift, unit, unitLogs, checks, profile?.uid ?? '', now.getTime());
+  const slots = unit?.nightChecks ? nightSlots(shift) : [];
   const rangeText =
     range.state === 'within' ? 'Within range' : range.state === 'outside' ? `${range.metres} m from the client` :
     range.state === 'denied' ? 'Location is off' : 'Checking your location…';
@@ -121,6 +131,40 @@ export default function ClockIn() {
               Clocked in at {shift.clockInAt ? fmtTime(shift.clockInAt.toMillis()) : ''}
             </Text>
           </Card>
+          {unit && (unit.requiredLogs?.length || slots.length > 0) ? (
+            <Card>
+              <Text style={s.h2}>{unit.name}</Text>
+              {unit.requiredLogs?.length ? <Muted>Required logs: {unit.requiredLogs.join(', ').replace(/_/g, ' ')}. Complete them in Residential Units before you clock out.</Muted> : null}
+              {slots.length > 0 && (
+                <>
+                  <Text style={{ fontWeight: '700', color: colors.ink }}>Hourly night checks</Text>
+                  <Muted>Each check opens 15 minutes before the hour and closes 5 minutes after. It cannot be filled in later.</Muted>
+                  {slots.map((t) => {
+                    const done = checks.find((c) => c.slot.toMillis() === t);
+                    const st = slotState(t, !!done, now.getTime());
+                    return (
+                      <View key={t} style={{ gap: 6, paddingVertical: 6, borderTopWidth: 1, borderTopColor: colors.line }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontWeight: '600', color: colors.ink }}>{fmtTime(t)}</Text>
+                          <Text style={{ color: st === 'done' ? colors.green : st === 'missed' ? colors.red : st === 'open' ? colors.primary : colors.inkFaint, fontWeight: '700' }}>
+                            {st === 'done' ? `Done · ${done?.status}` : st === 'missed' ? 'Missed' : st === 'open' ? 'Open now' : 'Later'}
+                          </Text>
+                        </View>
+                        {st === 'open' && (
+                          <>
+                            <Chips options={NIGHT_STATUSES.map((x) => ({ value: x, label: x }))} selected={nStatus} onToggle={(v) => setNStatus([v])} />
+                            <Field label="Note (optional)" value={nNote} onChangeText={setNNote} />
+                            <Btn label="Record check" disabled={nStatus.length === 0 || (nStatus[0].startsWith('Other') && !nNote.trim())}
+                              onPress={async () => { await submitNightCheck(shift, t, nStatus[0], nNote, profile!); setNStatus([]); setNNote(''); }} />
+                          </>
+                        )}
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </Card>
+          ) : null}
           {blocker && (
             <Card>
               <Text style={{ color: colors.amber, fontWeight: '700' }}>Before you can clock out</Text>

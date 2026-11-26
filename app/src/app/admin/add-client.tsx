@@ -3,12 +3,15 @@ import { Text } from 'react-native';
 import { addDoc, collection } from 'firebase/firestore';
 import { AddressPicker } from '../../components/AddressPicker';
 import { DateField } from '../../components/DateTimeFields';
+import { useAuth } from '../../lib/auth';
+import { audit } from '../../lib/audit';
 import { db } from '../../lib/firebase';
 import { feetToM } from '../../lib/geo';
 import { SERVICE_LINES } from '../../lib/types';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
 export default function AddClient() {
+  const { profile } = useAuth();
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [contactName, setContactName] = useState('');
@@ -27,10 +30,11 @@ export default function AddClient() {
   async function save() {
     if (!loc) return;
     await addDoc(collection(db, 'clients'), {
-      name: name.trim(), address: address.trim(), lat: loc.lat, lng: loc.lng, radiusM: feetToM(radN), serviceLines: lines,
+      name: name.trim(), address: address.trim(), lat: loc.lat, lng: loc.lng, radiusM: feetToM(radN), serviceLines: lines, status: 'potential',
       ...(dob ? { dob } : {}), contactName: contactName.trim(), contactPhone: contactPhone.trim(),
       defaultTasks: tasks.split(/[;\n]/).map((t) => t.trim()).filter(Boolean),
     });
+    audit(profile, 'client', `Created client ${name.trim()} (Potential)`);
     setName(''); setDob(''); setContactName(''); setContactPhone(''); setAddress(''); setLoc(null); setLines([]); setTasks(''); setMsg('Client added.');
   }
 

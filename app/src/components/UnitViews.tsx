@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
+import { useShiftsBetween } from '../lib/admin-data';
+import { SupplyFlowSetup, SupplyQueue, UnitSupplies } from './SupplyViews';
 import { colors } from '../lib/theme';
 import {
-  addLog, addPost, addRequest, addUnit, EMERGENCY_ITEMS, LOG_KINDS, retireUnit, setRequestStatus,
-  useUnitLogs, useUnitPosts, useUnitRequests, useUnits, type LogKind, type Priority, type Unit,
+  addLog, addPost, addRequest, addUnit, EMERGENCY_ITEMS, LOG_KINDS, nightSlots, retireUnit, setRequestStatus, setUnitRules, slotState,
+  useUnitChecks, useUnitLogs, useUnitPosts, useUnitRequests, useUnits, type LogKind, type Priority, type Unit,
 } from '../lib/units';
 import { Btn, Card, Chips, Field, fmtDay, fmtTime, Muted, s, Tag } from '../lib/ui';
+import { addDays, startOfDay } from '../lib/week';
 
 const stamp = (t?: { toMillis: () => number } | null) => (t ? `${fmtDay(t.toMillis())} ${fmtTime(t.toMillis())}` : 'just now');
 
@@ -26,6 +29,8 @@ export function UnitList({ office, onOpen }: { office: boolean; onOpen: (id: str
   }
   return (
     <View style={{ gap: 12 }}>
+      <SupplyQueue />
+      {office && <SupplyFlowSetup />}
       {office && <Btn label={adding ? 'Cancel' : '+ Add residential unit'} tone={adding ? 'ghost' : 'primary'} onPress={() => setAdding((v) => !v)} />}
       {adding && (
         <Card>
@@ -93,6 +98,9 @@ export function UnitDetail({ unitId, office }: { unitId: string; office: boolean
   const logs = useUnitLogs(unitId);
   const reqs = useUnitRequests(unitId);
   const posts = useUnitPosts(unitId);
+  const checks = useUnitChecks(office ? unitId : undefined);
+  const today = startOfDay(new Date());
+  const unitShifts = useShiftsBetween(addDays(today, -14), addDays(today, 1)).filter((x) => x.unitId === unitId && !!x.clockInAt);
   const [tab, setTab] = useState<string[]>(['checks']);
   const [kind, setKind] = useState<string[]>(['hot_water']);
   const [title, setTitle] = useState('');
@@ -108,7 +116,7 @@ export function UnitDetail({ unitId, office }: { unitId: string; office: boolean
         <Muted>{unit.type === 'home' ? 'Home' : 'Apartment'}{unit.address ? ` · ${unit.address}` : ''}</Muted>
         {unit.notes ? <Muted>{unit.notes}</Muted> : null}
       </View>
-      <Chips options={[{ value: 'checks', label: 'Safety checks' }, { value: 'maint', label: `Maintenance (${reqs.filter((r) => r.status !== 'done').length})` }, { value: 'board', label: 'Unit messages' }]}
+      <Chips options={[{ value: 'checks', label: 'Safety checks' }, { value: 'maint', label: `Maintenance (${reqs.filter((r) => r.status !== 'done').length})` }, { value: 'supplies', label: 'Supplies' }, { value: 'board', label: 'Unit messages' }, ...(office ? [{ value: 'night', label: 'Night checks & rules' }] : [])]}
         selected={tab} onToggle={(v) => setTab([v])} />
 
       {tab[0] === 'checks' && (
@@ -161,6 +169,42 @@ export function UnitDetail({ unitId, office }: { unitId: string; office: boolean
               )}
             </Card>
           ))}
+        </>
+      )}
+
+      {tab[0] === 'supplies' && <UnitSupplies unit={unit} />}
+
+      {tab[0] === 'night' && office && (
+        <>
+          <Card>
+            <Text style={s.h2}>Rules for this unit</Text>
+            <Muted>A DSP working a shift in this unit cannot clock out until the required logs are done by them during that shift.</Muted>
+            <Text style={{ fontWeight: '600' }}>Logs required before clock-out</Text>
+            <Chips options={(Object.keys(LOG_KINDS) as LogKind[]).map((k) => ({ value: k as string, label: LOG_KINDS[k].label }))} selected={(unit.requiredLogs ?? []) as string[]}
+              onToggle={(v) => { const cur = unit.requiredLogs ?? []; setUnitRules(unit.id, { requiredLogs: (cur.includes(v as LogKind) ? cur.filter((x) => x !== v) : [...cur, v as LogKind]) }); }} />
+            <Text style={{ fontWeight: '600' }}>Overnight</Text>
+            <Chips options={[{ value: 'n', label: 'Hourly night status checks (10pm–6am)' }]} selected={unit.nightChecks ? ['n'] : []} onToggle={() => setUnitRules(unit.id, { nightChecks: !unit.nightChecks })} />
+            <Muted>Each check opens 15 minutes before the hour and locks 5 minutes after, so it cannot be filled in later. Missed checks are recorded here and count against the DSP's performance.</Muted>
+          </Card>
+          <Text style={s.h2}>Last 14 days</Text>
+          {unitShifts.length === 0 && <Muted>No worked shifts for this unit yet. Pick the unit when you create a shift.</Muted>}
+          {unitShifts.map((sh) => {
+            const slots = unit.nightChecks ? nightSlots(sh) : [];
+            const mine = checks.filter((c) => c.shiftId === sh.id);
+            const missed = slots.filter((t) => slotState(t, mine.some((c) => c.slot.toMillis() === t)) === 'missed');
+            return (
+              <Card key={sh.id}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <Text style={{ fontWeight: '700', color: colors.ink }}>{sh.staffName || 'DSP'} · {fmtDay(sh.start.toMillis())}</Text>
+                  {slots.length > 0 && <Tag text={missed.length ? `${missed.length} missed` : 'All checks done'} tone={missed.length ? 'red' : 'green'} />}
+                </View>
+                {slots.length === 0 ? <Muted>No overnight checks in this shift.</Muted> : slots.map((t) => {
+                  const c = mine.find((x) => x.slot.toMillis() === t);
+                  return <Text key={t} style={{ color: c ? colors.ink : colors.red }}>{fmtTime(t)} — {c ? `${c.status}${c.note ? ` (${c.note})` : ''}` : slotState(t, false) === 'missed' ? 'Missed' : 'Not due yet'}</Text>;
+                })}
+              </Card>
+            );
+          })}
         </>
       )}
 

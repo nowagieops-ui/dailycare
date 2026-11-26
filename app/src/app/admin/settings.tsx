@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { FolderPick } from '../../components/FolderPick';
 import { useAuth } from '../../lib/auth';
+import { audit } from '../../lib/audit';
+import { useAllFolders } from '../../lib/drive';
 import { db } from '../../lib/firebase';
 import { usePrefs } from '../../lib/prefs';
 import { colors } from '../../lib/theme';
@@ -23,6 +26,14 @@ export default function AdminSettings() {
   const [address, setAddress] = useState('');
   const [msg, setMsg] = useState('');
   const canEdit = canAdminister(profile?.role);
+  const isSuper = profile?.role === 'super_admin';
+  const { items: folders } = useAllFolders(isSuper);
+  const [dspFolders, setDspFolders] = useState<{ activeId?: string; inactiveId?: string }>({});
+  useEffect(() => onSnapshot(doc(db, 'settings', 'dspFolders'), (d) => setDspFolders((d.data() as typeof dspFolders) ?? {}), () => {}), []);
+  const saveDspFolder = async (k: 'activeId' | 'inactiveId', id: string, label: string) => {
+    await setDoc(doc(db, 'settings', 'dspFolders'), { ...dspFolders, [k]: id });
+    audit(profile, 'dsp', `Set the ${label} DSP folder`);
+  };
 
   useEffect(() => onSnapshot(doc(db, 'settings', 'agency'), (d) => {
     const v = d.data();
@@ -36,6 +47,15 @@ export default function AdminSettings() {
 
   return (
     <Screen title="Settings">
+      {isSuper && (
+        <Card>
+          <Text style={s.h2}>Where DSP records are filed</Text>
+          <Muted>Set these once. When a DSP is deactivated, their records folder moves to the inactive/discharge folder; when reactivated it moves back to the active folder.</Muted>
+          <FolderPick label="Active DSPs folder" all={folders.filter((f) => !f.clientId && !f.dspId)} valueId={dspFolders.activeId} onPick={(f) => saveDspFolder('activeId', f.id, 'active')} />
+          <FolderPick label="Inactive / discharged DSPs folder" all={folders.filter((f) => !f.clientId && !f.dspId)} valueId={dspFolders.inactiveId} onPick={(f) => saveDspFolder('inactiveId', f.id, 'inactive')} />
+        </Card>
+      )}
+
       <Card>
         <Text style={s.h2}>Agency profile</Text>
         <Field label="Agency name" value={name} onChangeText={setName} />

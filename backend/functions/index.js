@@ -280,3 +280,82 @@ exports.renderSubmission = onDocumentCreated({ document: 'formSubmissions/{id}',
     await fail('Could not build the PDF.');
   }
 });
+
+// ---- Notifications for the new workflows (messages never include client or health details) ----
+async function flow() { return (await db.collection('settings').doc('supplyFlow').get()).data() ?? {}; }
+
+/** Supply requests: notify whoever is next at each stage, and tell the requester how it ended. */
+exports.onSupplyChange = onDocumentWritten('supplyRequests/{id}', async (e) => {
+  const after = e.data?.after?.data();
+  if (!after) return;
+  const before = e.data?.before?.data();
+  if (before && before.stage === after.stage) return;
+  const f = await flow();
+  if (after.stage === 'review') await sendPush(db, f.reviewerIds ?? [], 'Supply request', 'A new supply request needs your review.');
+  else if (after.stage === 'approval') await sendPush(db, f.approverIds ?? [], 'Supply approval', 'A supply request is waiting for your approval.');
+  else if (after.stage === 'purchasing') {
+    await sendPush(db, f.purchaserIds ?? [], 'Approved supplies', 'An approved supply request is ready for you to arrange.');
+    await sendPush(db, [after.byId], 'Supply request approved', 'Your supply request was approved.');
+  } else if (after.stage === 'rejected') await sendPush(db, [after.byId], 'Supply request declined', 'Your supply request was not approved.');
+  else if (after.stage === 'fulfilled') await sendPush(db, [after.byId], 'Supplies arranged', 'Your supply request has been taken care of.');
+});
+
+/** Call-outs and leave: admins hear about new ones; the DSP and the replacement hear about decisions. */
+exports.onCalloutChange = onDocumentWritten('callouts/{id}', async (e) => {
+  const after = e.data?.after?.data();
+  if (!after) return;
+  const before = e.data?.before?.data();
+  if (before && before.status === after.status) return;
+  if (after.status === 'requested') await sendPush(db, await adminUids(db), after.kind === 'leave' ? 'Time-off request' : 'Call-out', 'A team member filed a ' + (after.kind === 'leave' ? 'time-off request' : 'call-out') + '. Open the app to review.');
+  else if (after.status === 'approved') {
+    await sendPush(db, [after.staffId], 'Request approved', 'Your request was approved.');
+    if (after.replacementId) await sendPush(db, [after.replacementId], 'Cover a shift?', 'You were asked to cover a shift. Open the app to accept or decline.');
+  } else if (after.status === 'denied') await sendPush(db, [after.staffId], 'Request not approved', 'Your request was not approved. Open the app for details.');
+  else if (after.status === 'declined') await sendPush(db, await adminUids(db), 'Cover declined', 'A replacement declined a shift. It is open again.');
+});
+
+/** A replacement accepts or declines covering a shift. Runs on the server because only admins may reassign shifts. */
+exports.respondCallout = onCall(async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const id = req.data?.id; const accept = req.data?.accept === true;
+  const ref = db.collection('callouts').doc(String(id));
+  const snap = await ref.get();
+  const c = snap.data();
+  if (!snap.exists || c.replacementId !== req.auth.uid || c.status !== 'approved') throw new HttpsError('failed-precondition', 'This request is no longer waiting for you.');
+  const shiftRef = db.collection('shifts').doc(c.shiftId);
+  if (accept) {
+    const me = await db.collection('users').doc(req.auth.uid).get();
+    await shiftRef.update({ staffId: req.auth.uid, staffName: me.data().name });
+    await ref.update({ status: 'accepted', respondedAt: Timestamp.now() });
+  } else {
+    await shiftRef.update({ staffId: '', staffName: '' });
+    await ref.update({ status: 'declined', respondedAt: Timestamp.now() });
+  }
+  return { ok: true };
+});
+
+/** Tasks from management: tell the assignee, the assigner and watchers when things change. */
+exports.onAdminTaskChange = onDocumentWritten('adminTasks/{id}', async (e) => {
+  const a = e.data?.after?.data();
+  if (!a) return;
+  const b = e.data?.before?.data();
+  if (!b) return sendPush(db, [a.assigneeId], 'New task', 'A task was assigned to you.');
+  if (b.status !== a.status) {
+    if (a.status === 'submitted') await sendPush(db, [a.assignerId], 'Task submitted', 'A task is ready for your sign-off.');
+    else if (a.status === 'signed_off') await sendPush(db, [a.assigneeId], 'Task signed off', 'Your task was signed off.');
+    else if (a.status === 'returned') await sendPush(db, [a.assigneeId], 'Task returned', 'Your task needs more work.');
+  }
+  if (a.extension?.status === 'pending' && b.extension?.status !== 'pending') await sendPush(db, [a.assignerId], 'Extension request', 'Someone asked for more time on a task.');
+  if (a.extension?.status && b.extension?.status === 'pending' && a.extension.status !== 'pending') await sendPush(db, [a.assigneeId], 'Extension reviewed', 'Your extension request was reviewed.');
+});
+
+/** Overdue tasks: a daily 8am nudge to the assignee. */
+exports.overdueTasks = onSchedule({ schedule: '0 8 * * *', timeZone: TIMEZONE }, async () => {
+  const snap = await db.collection('adminTasks').where('status', 'in', ['open', 'returned']).get();
+  const now = Date.now();
+  for (const d of snap.docs) {
+    const t = d.data();
+    const due = t.extension?.status === 'approved' && t.extension.newDeadline ? t.extension.newDeadline : t.deadline;
+    if (due && due < now) await sendPush(db, [t.assigneeId], 'Task overdue', 'You have an overdue task.');
+  }
+});

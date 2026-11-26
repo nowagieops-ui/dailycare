@@ -8,10 +8,12 @@ import { useClients, useShiftsBetween } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { clientFolderId } from '../../lib/drive';
 import { audienceLabel, useAdminDocs, useFolderTemplate } from '../../lib/ebinder';
+import { audit } from '../../lib/audit';
+import { ALL_STATUSES, earnedStatus, STATUS_LABEL, STATUS_TONE, statusOf } from '../../lib/clientStatus';
 import { db } from '../../lib/firebase';
 import { feetToM, mToFeet } from '../../lib/geo';
 import { colors } from '../../lib/theme';
-import { Btn, Card, fmtDay, fmtTime, Field, initials, Muted, s, Screen, Tag } from '../../lib/ui';
+import { Btn, Card, Chips, fmtDay, fmtTime, Field, initials, Muted, s, Screen, Tag } from '../../lib/ui';
 import { addDays, startOfDay } from '../../lib/week';
 import { reviewStatus } from './clients';
 
@@ -54,6 +56,7 @@ export default function ClientDetail() {
       name: eName.trim(), contactName: eContact.trim(), contactPhone: ePhone.trim(), address: eAddr.trim(), radiusM: feetToM(feetN),
       ...(eLoc ? { lat: eLoc.lat, lng: eLoc.lng } : {}),
     });
+    audit(profile, 'client', `Edited client details for ${eName.trim()}${addrChanged ? ' (address changed)' : ''}`);
     setEditing(false); setMsg('Client details updated. Shifts already scheduled keep the address they were created with.');
   }
 
@@ -67,6 +70,7 @@ export default function ClientDetail() {
     await updateDoc(doc(db, 'clients', c!.id), {
       goals: goals.split('\n').map((g) => g.trim()).filter(Boolean), lastReviewed: last, nextReview: next,
     });
+    audit(profile, 'client', `Updated goals and review dates for ${c!.name}`);
     setMsg('Saved.');
   }
 
@@ -84,6 +88,19 @@ export default function ClientDetail() {
         </View>
         <Tag text={st.text} tone={st.tone} />
         <View style={{ minWidth: 130 }}><Btn label={editing ? 'Cancel' : 'Edit details'} tone="ghost" onPress={() => (editing ? setEditing(false) : startEdit())} /></View>
+      </Card>
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <Text style={s.h2}>Status</Text>
+          <Tag text={STATUS_LABEL[statusOf(c)]} tone={STATUS_TONE[statusOf(c)]} />
+        </View>
+        <Muted>Moves forward on its own: Potential → Pending when intake and goals are saved, → Approved when a plan is filed under Care Plans, → Active once services actually start (a visit is worked, or the start date below is reached with a DSP scheduled). Discharged and Inactive are set by hand.</Muted>
+        {(() => { const n = earnedStatus(c, docs, shifts); return n ? <Muted>Next: {STATUS_LABEL[n]} (will apply when the clients list is opened).</Muted> : null; })()}
+        <DateField label="Service start date" value={c.serviceStart ?? ''} optional
+          onChange={async (v) => { await updateDoc(doc(db, 'clients', c.id), { serviceStart: v }); audit(profile, 'client', `Set service start for ${c.name} to ${v || 'none'}`); }} />
+        <Text style={{ fontWeight: '600' }}>Change status manually</Text>
+        <Chips options={ALL_STATUSES.map((k) => ({ value: k as string, label: STATUS_LABEL[k] }))} selected={[statusOf(c)]}
+          onToggle={async (v) => { if (v === statusOf(c)) return; await updateDoc(doc(db, 'clients', c.id), { status: v }); audit(profile, 'client', `${c.name} status changed from ${STATUS_LABEL[statusOf(c)]} to ${STATUS_LABEL[v as keyof typeof STATUS_LABEL]} (manual)`); }} />
       </Card>
       {editing && (
         <Card>

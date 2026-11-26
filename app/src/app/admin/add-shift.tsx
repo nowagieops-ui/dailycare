@@ -9,13 +9,14 @@ import { db } from '../../lib/firebase';
 import { feetToM, mToFeet } from '../../lib/geo';
 import { generateDates, parseLocalDate, shiftWindow, type Pattern, type WeekCycle } from '../../lib/recurrence';
 import type { Client, UserProfile } from '../../lib/types';
+import { useUnits } from '../../lib/units';
 import { Btn, Card, Chips, Field, Muted, s, Screen } from '../../lib/ui';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_BATCH = 450; // Firestore batches cap at 500 writes
 
 type Row = { staff: (UserProfile & { id: string }) | null; // null = open shift
-   client: Client; start: Date; end: Date; tasks: string[]; phone?: string; address?: string; radius?: number; lat?: number; lng?: number };
+   client: Client; start: Date; end: Date; tasks: string[]; phone?: string; address?: string; radius?: number; lat?: number; lng?: number; unit?: { id: string; name: string } };
 
 async function saveShifts(rows: Row[]) {
   for (let i = 0; i < rows.length; i += MAX_BATCH) {
@@ -27,6 +28,7 @@ async function saveShifts(rows: Row[]) {
         staffPhone: r.phone ?? r.staff?.phone ?? '',
         clientId: r.client.id,
         clientName: r.client.name,
+        ...(r.unit ? { unitId: r.unit.id, unitName: r.unit.name } : {}),
         serviceLine: r.client.serviceLines[0] ?? '',
         address: r.address ?? r.client.address,
         lat: r.lat ?? r.client.lat,
@@ -44,6 +46,9 @@ async function saveShifts(rows: Row[]) {
 }
 
 export default function AddShift() {
+  const units = useUnits();
+  const [unitId, setUnitId] = useState<string[]>([]);
+  const unitPick = units.find((u) => u.id === unitId[0]);
   const clients = useClients();
   const allStaff = useStaff();
   const staff = allStaff.filter((u) => u.role === 'staff' || u.role === 'family_staff');
@@ -95,7 +100,7 @@ export default function AddShift() {
       for (const d of dates) {
         const w = shiftWindow(d, startT, endT);
         if (w) rows.push({
-          staff: staffPick, client: clientPick, ...w, tasks: clientPick.defaultTasks,
+          staff: staffPick, client: clientPick, ...w, tasks: clientPick.defaultTasks, ...(unitPick ? { unit: { id: unitPick.id, name: unitPick.name } } : {}),
           phone: phone.trim(), address: address.trim(), radius: Number(radius) ? feetToM(Number(radius)) : clientPick.radiusM, ...(loc ?? {}),
         });
       }
@@ -161,6 +166,13 @@ export default function AddShift() {
         <Field label="DSP phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Text style={{ fontWeight: '600' }}>Client</Text>
         <Chips options={clients.map((c) => ({ value: c.id, label: c.name }))} selected={clientId} onToggle={pickClient} />
+        {units.length > 0 && (
+          <>
+            <Text style={{ fontWeight: '600' }}>Residential unit (optional)</Text>
+            <Muted>For shifts worked in a home or apartment. The DSP then has to complete that unit's required logs, and any hourly night checks, before clocking out.</Muted>
+            <Chips options={units.map((u) => ({ value: u.id, label: u.name }))} selected={unitId} onToggle={(v) => setUnitId((c) => (c[0] === v ? [] : [v]))} />
+          </>
+        )}
         <AddressPicker label="Shift location (defaults to the client's address)" value={address}
           confirmed={!!clientPick && (loc !== null || address.trim() === clientPick.address.trim())}
           onText={(t) => { setAddress(t); setLoc(null); }} onPick={(p) => { setAddress(p.address); setLoc({ lat: p.lat, lng: p.lng }); }} />

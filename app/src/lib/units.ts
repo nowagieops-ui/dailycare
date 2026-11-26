@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
-  addDoc, collection, doc, onSnapshot, query, serverTimestamp, Timestamp, updateDoc, where, type Query,
+  addDoc, collection, doc, onSnapshot, setDoc, query, serverTimestamp, Timestamp, updateDoc, where, type Query,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { UserProfile } from './types';
+import type { Shift, UserProfile } from './types';
 
-export interface Unit { id: string; name: string; type: 'home' | 'apartment'; address: string; notes: string; active: boolean }
+export interface Unit { id: string; name: string; type: 'home' | 'apartment'; address: string; notes: string; active: boolean; requiredLogs?: LogKind[]; nightChecks?: boolean }
 export type LogKind = 'hot_water' | 'fridge' | 'emergency_box';
 export interface UnitLog {
   id: string; unitId: string; unitName: string; kind: LogKind; values: Record<string, string>; flagged: boolean;
@@ -67,3 +67,48 @@ export const setRequestStatus = (id: string, status: UnitRequest['status']) =>
   updateDoc(doc(db, 'unitRequests', id), { status, ...(status === 'done' ? { resolvedAt: serverTimestamp() } : {}) });
 export const addPost = (unit: Unit, text: string, me: UserProfile) =>
   addDoc(collection(db, 'unitPosts'), { unitId: unit.id, text: text.trim(), byId: me.uid, byName: me.name, at: serverTimestamp() });
+
+export const setUnitRules = (id: string, d: { requiredLogs?: LogKind[]; nightChecks?: boolean }) => updateDoc(doc(db, 'units', id), d);
+
+// ---- Hourly night checks ----
+export const NIGHT_STATUSES = ['Sleeping', 'Awake and calm', 'Awake, needs support', 'Not in room', 'Other (see note)'];
+const HOUR = 3600000;
+const isNightHour = (ms: number) => { const h = new Date(ms).getHours(); return h >= 22 || h < 6; };
+export const CHECK_OPENS_BEFORE = 15 * 60000;
+export const CHECK_CLOSES_AFTER = 5 * 60000;
+
+/** Top-of-the-hour check times between 10pm and 6am during a shift. */
+export function nightSlots(s: Pick<Shift, 'start' | 'end'>): number[] {
+  const out: number[] = [];
+  const first = Math.ceil(s.start.toMillis() / HOUR) * HOUR;
+  for (let t = first; t < s.end.toMillis(); t += HOUR) if (isNightHour(t)) out.push(t);
+  return out;
+}
+export interface UnitCheck { id: string; unitId: string; shiftId: string; slot: Timestamp; status: string; note: string; byId: string; byName: string; at: Timestamp }
+export const useShiftChecks = (shiftId?: string) =>
+  useLive<UnitCheck>(shiftId ? query(collection(db, 'unitChecks'), where('shiftId', '==', shiftId)) : null, `c${shiftId}`);
+export const useUnitChecks = (unitId?: string) =>
+  useLive<UnitCheck>(unitId ? query(collection(db, 'unitChecks'), where('unitId', '==', unitId)) : null, `u${unitId}`);
+export async function submitNightCheck(shift: Shift, slot: number, status: string, note: string, me: UserProfile) {
+  await setDoc(doc(db, 'unitChecks', `${shift.id}_${slot}`), {
+    unitId: shift.unitId, shiftId: shift.id, slot: Timestamp.fromMillis(slot), status, note: note.trim(), byId: me.uid, byName: me.name, at: serverTimestamp(),
+  });
+}
+/** 'open' = can be filled in now, 'upcoming' = not yet, 'done', or 'missed' (closed 5 minutes after the hour, never backfilled). */
+export function slotState(slot: number, done: boolean, now = Date.now()): 'done' | 'open' | 'upcoming' | 'missed' {
+  if (done) return 'done';
+  if (now > slot + CHECK_CLOSES_AFTER) return 'missed';
+  return now >= slot - CHECK_OPENS_BEFORE ? 'open' : 'upcoming';
+}
+/** Why clock-out is blocked for a residential shift, or null. Missed (closed) checks are recorded, not blocking. */
+export function residentialBlocker(shift: Shift, unit: Unit | undefined, logs: UnitLog[], checks: UnitCheck[], uid: string, now = Date.now()): string | null {
+  if (!shift.unitId || !unit) return null;
+  const since = shift.clockInAt?.toMillis() ?? shift.start.toMillis();
+  const need = (unit.requiredLogs ?? []).filter((k) => !logs.some((l) => l.kind === k && l.byId === uid && (l.at?.toMillis?.() ?? now) >= since));
+  if (need.length) return `Complete the ${need.map((k) => LOG_KINDS[k].label.toLowerCase()).join(' and ')} log for ${unit.name}`;
+  if (unit.nightChecks) {
+    const due = nightSlots(shift).find((t) => slotState(t, checks.some((c) => c.slot.toMillis() === t), now) === 'open');
+    if (due !== undefined) return 'An hourly night check is due. Fill it in first';
+  }
+  return null;
+}

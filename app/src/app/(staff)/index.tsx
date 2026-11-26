@@ -1,5 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { startTour } from '../../components/Tour';
 import { useAuth } from '../../lib/auth';
 import { useSignedIds, useStaffDocs } from '../../lib/ebinder';
 import { useCredentials } from '../../lib/credentials';
@@ -80,6 +82,12 @@ export default function Home() {
         </Pressable>
       )}
 
+      <Pressable onPress={() => startTour('dsp')} accessibilityRole="button" style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+        <Ionicons name="compass-outline" size={20} color={colors.primary} />
+        <View style={{ flex: 1 }}><Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>Take a Tour</Text><Text style={{ fontSize: 12, color: colors.inkFaint }}>A step-by-step walkthrough of the app</Text></View>
+      </Pressable>
+      <RowLink icon="clipboard-outline" title="Tasks from management" sub="Deadlines, responses and extensions" href="/mytasks" />
+      <RowLink icon="call-outline" title="Call-outs & Time Off" sub="Call out, request time off, cover a shift" href="/callouts" />
       <RowLink icon="home-outline" title="Residential Units" sub="Safety checks, maintenance, unit messages" href="/units" />
       <RowLink
         icon="school-outline" title="Training & Credentials" href="/training"

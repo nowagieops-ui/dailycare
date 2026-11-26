@@ -43,6 +43,8 @@ export interface Shift {
   tasks: Task[];
   note: string;
   approved?: boolean; // timesheet approved by an admin
+  unitId?: string; // residential unit this shift is worked in (adds unit logs and night checks)
+  unitName?: string;
 }
 
 export interface Announcement {
@@ -63,6 +65,8 @@ export const SERVICE_LINES = [
   'Community Development', 'Nursing Support', 'Transportation',
 ] as const;
 
+export type ClientStatus = 'potential' | 'pending' | 'approved' | 'active' | 'inactive' | 'discharged';
+
 export interface Client {
   id: string;
   name: string;
@@ -78,6 +82,8 @@ export interface Client {
   goals?: string[]; // ISP / care plan support goals
   lastReviewed?: string; // YYYY-MM-DD
   nextReview?: string;
+  status?: ClientStatus; // missing = active (clients created before statuses existed)
+  serviceStart?: string; // YYYY-MM-DD the first service visit is planned for
 }
 
 export interface AlertDoc {

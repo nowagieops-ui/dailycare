@@ -1,14 +1,17 @@
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
+import { TourHost } from '../../components/Tour';
 import { colors } from '../../lib/theme';
 import { tabIcon } from '../../lib/tab-icon';
 
 // Tab bar follows the mockup (Home, Schedule, Clock, Tasks, Docs) plus the owner's two changes:
 // "Clock" is "Clock In", and a new "Notes" tab for the daily note.
 // Hidden from the tab bar, but still real pages with their own addresses. (`href: null` made them unreachable.)
-const HIDDEN = ['form-fill', 'chat', 'chat-thread', 'announcements', 'document', 'training', 'missed', 'calendar', 'files', 'settings', 'notifications', 'units', 'unit-detail'];
+const HIDDEN = ['form-fill', 'chat', 'chat-thread', 'announcements', 'document', 'training', 'missed', 'calendar', 'files', 'settings', 'notifications', 'units', 'unit-detail', 'callouts', 'mytasks'];
 
 export default function StaffTabs() {
   return (
+    <View style={{ flex: 1 }}>
     <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.primary, tabBarLabelStyle: { fontSize: 11, fontWeight: '600' } }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('home-outline') }} />
       <Tabs.Screen name="schedule" options={{ title: 'Schedule', tabBarIcon: tabIcon('calendar-outline') }} />
@@ -18,5 +21,7 @@ export default function StaffTabs() {
       <Tabs.Screen name="documents" options={{ title: 'Docs', tabBarIcon: tabIcon('document-text-outline') }} />
       {HIDDEN.map((n) => <Tabs.Screen key={n} name={n} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />)}
     </Tabs>
+    <TourHost />
+    </View>
   );
 }

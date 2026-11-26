@@ -49,7 +49,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Daily Care Support uses your location to confirm you are at the client's address when you clock in, and to alert your supervisor if you leave during a shift.",
           "isIosBackgroundLocationEnabled": true,
-          "isAndroidBackgroundLocationEnabled": true
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-notifications",

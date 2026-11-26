@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStaff, useClients } from '../lib/admin-data';
+import { useAuth } from '../lib/auth';
+import { audit } from '../lib/audit';
 import { clientFolderId, createFolder, deleteItem, fileUrl, myKeys, importTree, renameItem, saveShares, syncClientFolders, zipEntries, uploadFile, useAllFolders, useFolder } from '../lib/drive';
 import { useFolderTemplate } from '../lib/ebinder';
 import { roleKey, type Share } from '../lib/drive-access';
@@ -79,6 +81,8 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   const showBy = avail >= 820, showEb = avail >= 700, showDate = avail >= 520, showSize = avail >= 440;
   const [trail, setTrail] = useState<DriveItem[]>([]);
   const here = trail[trail.length - 1] ?? null;
+  const { profile } = useAuth();
+  const where = (it?: DriveItem | null) => (it ? `"${it.name}"` : 'the top level');
   const items = useFolder(here?.id ?? null, mode, myKeys(uid, role));
   const { items: allFolders, loaded } = useAllFolders(mode === 'super');
   const staff = useStaff().filter((u) => u.role === 'staff' || u.role === 'family_staff');
@@ -104,7 +108,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   const synced = useRef('');
   useEffect(() => {
     if (mode !== 'super' || !loaded || clients.length === 0) return;
-    const key = `${clients.length}:${allFolders.length}:${template.join('|')}`;
+    const key = `${clients.map((c) => c.status ?? "a").join("")}:${clients.length}:${allFolders.length}:${template.join('|')}`;
     if (synced.current === key) return;
     synced.current = key;
     syncClientFolders(clients, allFolders, uid, name, template).catch(() => {});
@@ -132,6 +136,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
     input.onchange = async () => {
       for (const f of Array.from(input.files ?? [])) {
         const problem = await uploadFile(f, here, uid, name, office);
+        if (!problem) audit(profile, 'file', `Uploaded "${f.name}" to ${where(here)}`);
         setMsg(problem ?? `Uploaded ${f.name}`);
         if (problem) return;
       }
@@ -155,6 +160,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
           : files.map((f) => ({ path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name, file: f }));
         // A picked folder's own name is part of its paths; a ZIP's top-level folders are kept as they are.
         const r = await importTree(entries, here, uid, name, office, (d, t) => setMsg(`Importing ${d} of ${t}…`));
+        audit(profile, 'file', `Bulk import into ${where(here)}: ${r.files} files, ${r.folders} new folders${r.skipped.length ? `, ${r.skipped.length} skipped` : ''}`);
         setMsg(`Imported ${r.files} file${r.files === 1 ? '' : 's'} and ${r.folders} new folder${r.folders === 1 ? '' : 's'}.${r.skipped.length ? ` Skipped ${r.skipped.length}: ${r.skipped.slice(0, 3).join('; ')}${r.skipped.length > 3 ? '…' : ''}` : ''}`);
       } catch {
         setMsg('Import failed. Check the ZIP and your permissions, then try again.');
@@ -184,6 +190,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
       ...viewKeys.filter((k) => !upKeys.includes(k)).map((key) => ({ key, level: 'view' as const })),
     ];
     await saveShares(sharing, own);
+    audit(profile, 'file', `Changed sharing on "${sharing.name}"`);
     setMsg(`Sharing updated for "${sharing.name}".`);
     setSharing(null);
   }
@@ -192,6 +199,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
     if (!renaming) return;
     try {
       await renameItem(renaming, renameTo);
+      audit(profile, 'file', `Renamed "${renaming.name}" to "${renameTo.trim()}"`);
       setTrail((t) => t.map((x) => (x.id === renaming.id ? { ...x, name: renameTo.trim() } : x)));
       setMsg(`Renamed to "${renameTo.trim()}".`);
     } catch { setMsg('Could not rename. Check your connection and try again.'); }
@@ -200,7 +208,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
   async function remove(it: DriveItem) {
     const extra = it.type === 'folder' ? ' and everything inside it' : '';
     const linked = it.ebinderDocId && !it.fromEbinder ? ' Its eBinder document is deleted too.' : it.fromEbinder ? ' The eBinder copy stays.' : '';
-    if (await confirmAsk(`Delete "${it.name}"${extra}?${linked} This cannot be undone.`)) await deleteItem(it);
+    if (await confirmAsk(`Delete "${it.name}"${extra}?${linked} This cannot be undone.`)) { await deleteItem(it); audit(profile, 'file', `Deleted ${it.type} "${it.name}"`); }
   }
 
   const toggle = (set: (f: (c: string[]) => string[]) => void) => (v: string) =>
@@ -247,7 +255,7 @@ export function DriveBrowser({ mode, uid, role, name = '', startFolderId }: Prop
       {creating && (
         <Card>
           <Field label={`New folder in ${here?.name ?? 'All files'}`} value={newName} onChangeText={setNewName} />
-          <Btn label="Create folder" disabled={!newName.trim()} onPress={async () => { await createFolder(newName, here, uid, name); setNewName(''); setCreating(false); }} />
+          <Btn label="Create folder" disabled={!newName.trim()} onPress={async () => { await createFolder(newName, here, uid, name); audit(profile, 'file', `Created folder "${newName.trim()}" in ${where(here)}`); setNewName(''); setCreating(false); }} />
         </Card>
       )}
       <Muted>PDF, Word, Excel, PNG, JPEG, TXT or CSV, up to 25 MB each.</Muted>

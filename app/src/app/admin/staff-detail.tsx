@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useShiftsBetween, useStaff } from '../../lib/admin-data';
 import { useAuth } from '../../lib/auth';
 import { useCredentials, stageOf, stageTone } from '../../lib/credentials';
 import { daysLeft, stageLabel } from '../../lib/expiry';
+import { audit } from '../../lib/audit';
 import { db, functions } from '../../lib/firebase';
 import { ensureDspFolder, moveFolder, useAllFolders } from '../../lib/drive';
 import type { DriveItem } from '../../lib/types';
@@ -37,6 +38,13 @@ export default function StaffDetail() {
   /** Moves the DSP's records folder to the sibling "Active" / "Inactive" folder when their status changes. */
   async function followStatus(nowActive: boolean) {
     if (!isSuper || !current) return '';
+    const cfg = (await getDoc(doc(db, 'settings', 'dspFolders'))).data() as { activeId?: string; inactiveId?: string } | undefined;
+    const target = allFolders.find((f) => f.id === (nowActive ? cfg?.activeId : cfg?.inactiveId));
+    if (target) {
+      if (current.parentId === target.id) return '';
+      await moveFolder(current, target);
+      return ` Their records folder moved to "${pathName(target)}".`;
+    }
     const want = nowActive ? 'active' : 'inactive';
     const named = allFolders.filter((f) => f.name.trim().toLowerCase() === want && !f.dspId && f.id !== current.id);
     const dest = named.find((f) => f.parentId === (allFolders.find((x) => x.id === current.parentId)?.parentId ?? null)) ?? named[0];
@@ -51,6 +59,7 @@ export default function StaffDetail() {
     try {
       const made = await ensureDspFolder({ id: user.id, name: user.name }, parent, profile.uid, profile.name);
       await updateDoc(doc(db, 'users', user.id), { recordsFolderId: made.id });
+      audit(profile, 'dsp', `Set ${user.name}'s records folder to "${pathName(made)}"`);
       setFmsg(`${user.name}'s records folder is "${pathName(made)}".`);
     } catch { setFmsg('Could not set the folder. Try again.'); }
   }
@@ -60,6 +69,7 @@ export default function StaffDetail() {
     setBusy(true);
     try {
       await httpsCallable(functions, 'deleteAccount')({ uid: user!.id });
+      audit(profile, 'dsp', `Deleted account ${user!.name} (${user!.email})`);
       router.replace('/admin/staff' as never);
     } catch (e) {
       const m = (e as { message?: string }).message || 'Could not delete this account.';
@@ -101,6 +111,7 @@ export default function StaffDetail() {
                 setBusy(true);
                 try {
                   await updateDoc(doc(db, 'users', user.id), { active: !user.active });
+                  audit(profile, 'dsp', `${user.active ? 'Deactivated' : 'Reactivated'} ${user.name}`);
                   const note = await followStatus(!user.active).catch(() => ' Their records folder could not be moved.');
                   if (note) setFmsg(note.trim());
                 } finally { setBusy(false); }

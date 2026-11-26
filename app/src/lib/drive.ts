@@ -7,7 +7,8 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 import { db, storage } from './firebase';
 import { FOLDERS } from './ebinder';
 import { checkUpload, propagate, roleKey, type Access, type Share } from './drive-access';
-import type { Client, DriveItem, Role } from './types';
+import { STATUS_FOLDER, statusOf } from './clientStatus';
+import type { Client, ClientStatus, DriveItem, Role } from './types';
 
 const col = () => collection(db, 'drive');
 const MAX_BATCH = 450;
@@ -77,9 +78,14 @@ async function ensureFolder(id: string, name: string, parent: DriveItem | null, 
 }
 
 /** The client's eBinder folder (creating Individuals / client / folder as needed). `folder` '' = the client's top folder. */
-export async function ensureClientFolder(client: Pick<Client, 'id' | 'name'>, folder: string, uid: string, ownerName: string): Promise<DriveItem> {
+const statusFolderId = (s: ClientStatus) => `st_${s}`;
+
+export async function ensureClientFolder(client: Pick<Client, 'id' | 'name'> & { status?: ClientStatus }, folder: string, uid: string, ownerName: string): Promise<DriveItem> {
   const root = await ensureFolder(ROOT_ID, 'Individuals', null, uid, ownerName, {});
-  const top = await ensureFolder(clientFolderId(client.id), client.name, root, uid, ownerName, { clientId: client.id, ebinderFolder: '' });
+  // New client folders sit under their status folder (Potential, Pending, Active, ...).
+  const stKey = statusOf({ status: client.status });
+  const stFolder = await ensureFolder(statusFolderId(stKey), STATUS_FOLDER[stKey], root, uid, ownerName, {});
+  const top = await ensureFolder(clientFolderId(client.id), client.name, stFolder, uid, ownerName, { clientId: client.id, ebinderFolder: '' });
   if (!folder || folder === 'General') return top;
   // A folder renamed from its original name keeps its id, so find it by its eBinder folder name first.
   const renamed = await getDocs(query(col(), where('clientId', '==', client.id), where('ebinderFolder', '==', folder)));
@@ -89,10 +95,20 @@ export async function ensureClientFolder(client: Pick<Client, 'id' | 'name'>, fo
 }
 
 /** Makes sure each client has a folder with the standard eBinder subfolders. Safe to run repeatedly. */
-export async function syncClientFolders(clients: Pick<Client, 'id' | 'name'>[], existing: DriveItem[], uid: string, ownerName: string, folders: readonly string[] = FOLDERS) {
+export async function syncClientFolders(clients: (Pick<Client, 'id' | 'name'> & { status?: ClientStatus })[], existing: DriveItem[], uid: string, ownerName: string, folders: readonly string[] = FOLDERS) {
   const ids = new Set(existing.map((f) => f.id));
   const hasCat = (cid: string, f: string) => existing.some((x) => x.clientId === cid && x.ebinderFolder === f && x.type === 'folder');
   for (const c of clients) {
+    // Keep each client's folder under the folder for their current status.
+    const top = existing.find((f) => f.id === clientFolderId(c.id));
+    if (top) {
+      const want = statusFolderId(statusOf({ status: c.status }));
+      if (top.parentId !== want) {
+        const root = await ensureFolder(ROOT_ID, 'Individuals', null, uid, ownerName, {});
+        const dest = await ensureFolder(want, STATUS_FOLDER[statusOf({ status: c.status })], root, uid, ownerName, {});
+        await moveFolder(top, dest).catch(() => {});
+      }
+    }
     if (ids.has(clientFolderId(c.id)) && folders.every((f) => hasCat(c.id, f))) continue;
     for (const f of folders) await ensureClientFolder(c, f, uid, ownerName);
   }
