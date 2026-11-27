@@ -1,0 +1,1 @@
+__d(function(g,r,i,a,m,e,d){"use strict";Object.defineProperty(e,'__esModule',{value:!0}),Object.defineProperty(e,"default",{enumerable:!0,get:function(){return u}});var n=r(d[0]),t=r(d[1]),s=r(d[2]);function u(){return(0,s.jsx)(t.StaffScreen,{title:"Tasks from management",children:(0,s.jsx)(n.TasksPanel,{canAssign:!1})})}},770,[847,822,6]);
