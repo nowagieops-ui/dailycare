@@ -264,8 +264,10 @@ service cloud.firestore {
       allow create: if isOffice() && request.resource.data.assignerId == request.auth.uid;
       allow update: if isActive() && (isSuper() || resource.data.assignerId == request.auth.uid
         || (request.auth.uid == resource.data.assigneeId
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'response', 'responseAt', 'extension', 'history'])
-            && (resource.data.get('response', '') == '' || request.resource.data.response == resource.data.response)));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'response', 'responseAt', 'extension', 'history', 'attachments'])
+            && (resource.data.get('response', '') == ''
+                || (request.resource.data.response == resource.data.response
+                    && request.resource.data.get('attachments', []) == resource.data.get('attachments', [])))));
       allow delete: if isSuper();
     }
 

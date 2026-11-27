@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { DateField, TimeField } from './DateTimeFields';
 import { useAuth } from '../lib/auth';
 import { usePeople } from '../lib/chat';
 import {
-  createTask, decideExtension, dueOf, isOverdue, monthlyScores, requestExtension, signOff, STATUS_TEXT, submitTask, useAdminTasks, wasLate, type AdminTask,
+  attachmentUrl, createTask, decideExtension, dueOf, isOverdue, monthlyScores, requestExtension, signOff, STATUS_TEXT, submitTask, useAdminTasks, wasLate, type AdminTask, type Pick,
 } from '../lib/adminTasks';
 import { colors } from '../lib/theme';
 import { Btn, Card, Chips, Field, fmtDay, fmtTime, Muted, s, Tag } from '../lib/ui';
@@ -21,7 +22,18 @@ function TaskCard({ t }: { t: AdminTask }) {
   const [d, setD] = useState('');
   const [tm, setTm] = useState('17:00');
   const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<Pick[]>([]);
+  const [err, setErr] = useState('');
   if (!profile) return null;
+  async function addFile() {
+    const r = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], copyToCacheDirectory: true });
+    if (r.canceled || !r.assets[0]) return;
+    const a = r.assets[0];
+    if ((a.size ?? 0) > 25 * 1024 * 1024) return setErr('That file is over 25 MB.');
+    setErr('');
+    setFiles((f) => [...f, { name: a.name, type: a.mimeType ?? 'application/octet-stream', blob: a.file ?? (null as never) }]);
+    if (!a.file) { const b = await (await fetch(a.uri)).blob(); setFiles((f) => f.map((x) => (x.name === a.name && !x.blob ? { ...x, blob: b } : x))); }
+  }
   const mine = t.assigneeId === profile.uid;
   const boss = t.assignerId === profile.uid || profile.role === 'super_admin';
   const over = isOverdue(t);
@@ -40,6 +52,11 @@ function TaskCard({ t }: { t: AdminTask }) {
         <View style={{ backgroundColor: colors.tint, borderRadius: 10, padding: 10, gap: 2 }}>
           <Text style={{ fontWeight: '600', color: colors.ink }}>Response{t.responseAt ? ` · ${when(t.responseAt)}${wasLate(t) ? ' · late' : ''}` : ''}</Text>
           <Text style={{ color: colors.ink }}>{t.response}</Text>
+          {(t.attachments ?? []).map((a) => (
+            <Pressable key={a.path} onPress={async () => Linking.openURL(await attachmentUrl(a.path))} accessibilityRole="link">
+              <Text style={{ color: colors.primary, fontWeight: '700' }}>📎 {a.name}</Text>
+            </Pressable>
+          ))}
         </View>
       ) : null}
       {t.extension ? <Muted>Extension {t.extension.status}: until {when(t.extension.newDeadline)} — {t.extension.reason}{t.extension.progress ? ` (progress: ${t.extension.progress})` : ''}</Muted> : null}
@@ -47,8 +64,16 @@ function TaskCard({ t }: { t: AdminTask }) {
       {mine && (t.status === 'open' || t.status === 'returned') && (
         <>
           <Field label="What did you do? Include any reply you got, or the result of a failed contact attempt" value={resp} onChangeText={setResp} multiline />
-          <Muted>Reading the task isn't completing it. Once submitted, your response is locked.</Muted>
-          <Btn label="Submit as done" busy={busy} disabled={resp.trim().length < 15} onPress={() => run(() => submitTask(t, profile, resp))} />
+          <Muted>Reading the task isn't completing it. Once submitted, your response and files are locked.</Muted>
+          {files.map((f, n) => (
+            <View key={n} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <Text style={{ color: colors.ink, flex: 1 }}>📎 {f.name}</Text>
+              <Pressable onPress={() => setFiles((x) => x.filter((_, j) => j !== n))}><Text style={{ color: colors.red, fontWeight: '700' }}>Remove</Text></Pressable>
+            </View>
+          ))}
+          <Btn label="Attach a file or photo" tone="ghost" onPress={addFile} />
+          {err ? <Text style={{ color: colors.red }}>{err}</Text> : null}
+          <Btn label="Submit as done" busy={busy} disabled={resp.trim().length < 15 || files.some((f) => !f.blob)} onPress={() => run(async () => { try { await submitTask(t, profile, resp, files); setFiles([]); } catch { setErr('Could not upload. Check your connection and try again.'); } })} />
           {t.extension?.status !== 'pending' && <Btn label={ext ? 'Cancel' : 'Ask for more time'} tone="ghost" onPress={() => setExt((v) => !v)} />}
           {ext && (
             <>

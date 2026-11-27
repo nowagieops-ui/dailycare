@@ -38,6 +38,17 @@ service firebase.storage {
       allow delete: if isAdminUser();
     }
 
+    // Task evidence: the assignee uploads it with their response (create-only, so it cannot be swapped later);
+    // the people on the task and super admins read it.
+    function taskDoc(id) { return firestore.get(/databases/(default)/documents/adminTasks/$(id)).data; }
+    match /taskFiles/{taskId}/{file} {
+      allow read: if active() && (isSuper() || request.auth.uid in taskDoc(taskId).participants);
+      allow create: if active() && request.auth.uid == taskDoc(taskId).assigneeId
+        && request.resource.size > 0 && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/png|image/jpeg|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|text/plain');
+      allow update, delete: if false;
+    }
+
     // PDF form templates: office uploads; only office reads (staff get the field list from Firestore).
     match /formTemplates/{tplId}/{file} {
       allow read, delete: if isAdminUser();

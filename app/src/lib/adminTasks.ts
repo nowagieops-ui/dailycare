@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { addDoc, arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, Timestamp, updateDoc, where, type Query } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { audit } from './audit';
-import { db } from './firebase';
+import { db, storage } from './firebase';
 import type { UserProfile } from './types';
 
 export type TaskStatus = 'open' | 'submitted' | 'signed_off' | 'returned';
@@ -10,6 +11,7 @@ export interface HistoryItem { at: number; by: string; text: string }
 export interface AdminTask {
   id: string; title: string; details: string; assignerId: string; assignerName: string; assigneeId: string; assigneeName: string;
   watcherIds: string[]; participants: string[]; deadline: number; status: TaskStatus; createdAt: Timestamp;
+  attachments?: { name: string; path: string }[];
   response?: string; responseAt?: number; extension?: Extension; history?: HistoryItem[]; signedOffAt?: number;
 }
 
@@ -41,8 +43,15 @@ export async function createTask(me: UserProfile, d: { title: string; details: s
 }
 
 /** The response is locked once submitted: it cannot be edited afterwards, only sent back by the assigner. */
-export async function submitTask(t: AdminTask, me: UserProfile, response: string) {
-  await updateDoc(doc(db, 'adminTasks', t.id), { status: 'submitted', response: response.trim(), responseAt: Date.now(), history: arrayUnion({ at: Date.now(), by: me.name, text: 'Submitted' }) });
+export interface Pick { name: string; type: string; blob: Blob }
+export async function submitTask(t: AdminTask, me: UserProfile, response: string, files: Pick[] = []) {
+  const attachments: { name: string; path: string }[] = [];
+  for (const f of files) {
+    const path = `taskFiles/${t.id}/${Date.now()}_${f.name.replace(/[^\w.\- ]/g, '_')}`;
+    await uploadBytes(ref(storage, path), f.blob, { contentType: f.type });
+    attachments.push({ name: f.name, path });
+  }
+  await updateDoc(doc(db, 'adminTasks', t.id), { status: 'submitted', response: response.trim(), responseAt: Date.now(), attachments, history: arrayUnion({ at: Date.now(), by: me.name, text: 'Submitted' }) });
 }
 export async function signOff(t: AdminTask, me: UserProfile, ok: boolean) {
   await updateDoc(doc(db, 'adminTasks', t.id), ok
@@ -81,3 +90,5 @@ export function monthlyScores(tasks: AdminTask[], year: number, month: number, n
   }
   return [...by.values()].sort((a, b) => (a.score ?? 101) - (b.score ?? 101));
 }
+
+export const attachmentUrl = (path: string) => getDownloadURL(ref(storage, path));
